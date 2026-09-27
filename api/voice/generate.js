@@ -178,6 +178,8 @@ async function synthPremium({ text, speaker, languageCode, pace, temperature }) 
 const EDGE_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
 const EDGE_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0';
 const EDGE_HOST = 'speech.platform.bing.com';
+const EDGE_FORMAT = process.env.EDGE_OUTPUT_FORMAT || 'audio-24khz-96kbitrate-mono-mp3'; // double bitrate vs default 48k
+const EDGE_VOLUME_BOOST = 10; // prosody volume +% — louder, fuller playback
 let clockSkewSeconds = 0;
 
 function secMsGec() {
@@ -319,12 +321,12 @@ function edgeSynthOnce({ text, voice, locale, ratePct, pitchHz, volumePct, timeo
         const ts = new Date().toUTCString().replace('GMT', 'GMT+0000 (Coordinated Universal Time)');
         wsSendFrame(socket,
           `X-Timestamp:${ts}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
-          `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`);
+          `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"${EDGE_FORMAT}"}}}}`);
         const fmt = (n, u) => `${n >= 0 ? '+' : ''}${Math.round(n)}${u}`;
         const ssml =
           `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${locale}'>` +
           `<voice name='${voice}'>` +
-          `<prosody pitch='${fmt(pitchHz || 0, 'Hz')}' rate='${fmt(ratePct || 0, '%')}' volume='${fmt(volumePct || 0, '%')}'>` +
+          `<prosody pitch='${fmt(pitchHz || 0, 'Hz')}' rate='${fmt(ratePct || 0, '%')}' volume='${fmt((volumePct || 0) + EDGE_VOLUME_BOOST, '%')}'>` +
           escapeXml(text) +
           `</prosody></voice></speak>`;
         wsSendFrame(socket, `X-RequestId:${connectionId}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:${ts}Z\r\nPath:ssml\r\n\r\n${ssml}`);

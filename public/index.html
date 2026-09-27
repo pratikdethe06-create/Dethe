@@ -12,11 +12,113 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      /* ─── DetheAI Payments ───────────────────────────────────────────────
+         Premium (Pro / Business) plan ab REAL payment ke baad hi khulta hai.
+         Flow: /api/billing/checkout → Razorpay Checkout → /api/billing/verify
+         → dethe_auth_user me paid plan save → page reload.                     */
+      (function () {
+        function detectCycle() {
+          try {
+            var btns = Array.prototype.slice.call(document.querySelectorAll('button'));
+            var yBtn = btns.find(function (b) { return b.textContent && b.textContent.indexOf('Yearly') !== -1; });
+            if (yBtn) {
+              var span = yBtn.querySelector('span');
+              if (span && span.className && span.className.indexOf('text-[#17231f]') !== -1) return 'yearly';
+            }
+          } catch (e) {}
+          return 'monthly';
+        }
+
+        function loadCheckoutJs() {
+          if (window.Razorpay) return Promise.resolve();
+          return new Promise(function (resolve, reject) {
+            var sc = document.createElement('script');
+            sc.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            sc.onload = resolve;
+            sc.onerror = function () { reject(new Error('Razorpay checkout load failed')); };
+            document.head.appendChild(sc);
+          });
+        }
+
+        window.dethePay = async function (title) {
+          var cycle = detectCycle();
+          try {
+            var r = await fetch('/api/billing/checkout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ plan: title, cycle: cycle })
+            });
+            var d = await r.json();
+            if (!d.configured) {
+              alert('💳 ' + title + ' plan ke liye payment gateway setup ho raha hai.\n\nAbhi activate karna ho to email karein: pratikdethe06@gmail.com');
+              return;
+            }
+            await loadCheckoutJs();
+            var rzp = new window.Razorpay({
+              key: d.key_id,
+              amount: d.amount,
+              currency: d.currency || 'INR',
+              name: 'DetheAI',
+              description: title + ' plan (' + cycle + ')',
+              order_id: d.order_id,
+              theme: { color: '#1b7d5d' },
+              handler: async function (resp) {
+                try {
+                  var v = await fetch('/api/billing/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      razorpay_order_id: resp.razorpay_order_id,
+                      razorpay_payment_id: resp.razorpay_payment_id,
+                      razorpay_signature: resp.razorpay_signature,
+                      plan: title,
+                      cycle: cycle
+                    })
+                  });
+                  var vd = await v.json();
+                  if (vd.ok) {
+                    try {
+                      var u = {};
+                      try { u = JSON.parse(localStorage.getItem('dethe_auth_user') || '{}') || {}; } catch (e) {}
+                      if (!u.id) {
+                        u = { id: 'usr_paid_' + Date.now(), name: 'DetheAI Member', email: '', avatar: '', provider: 'email' };
+                      }
+                      u.plan = vd.plan;
+                      u.planCycle = vd.cycle;
+                      u.planToken = vd.token;
+                      u.credits = vd.credits;
+                      u.creditsLimit = vd.credits;
+                      u.paidAt = new Date().toISOString();
+                      localStorage.setItem('dethe_auth_user', JSON.stringify(u));
+                    } catch (e) {}
+                    alert('🎉 Payment successful! ' + vd.plan + ' plan activate ho gaya. Welcome to DetheAI!');
+                    location.reload();
+                  } else {
+                    alert('⚠️ ' + (vd.message || 'Payment verification failed.'));
+                  }
+                } catch (e) {
+                  alert('⚠️ Verification error. Agar paisa kata hai to email karein: pratikdethe06@gmail.com (payment ID: ' + (resp.razorpay_payment_id || '-') + ')');
+                }
+              }
+            });
+            rzp.on && rzp.on('payment.failed', function () {});
+            rzp.open();
+          } catch (e) {
+            alert('⚠️ Payment start nahi ho paya: ' + (e && e.message ? e.message : 'unknown error') + '\nDobara try karein ya email karein: pratikdethe06@gmail.com');
+          }
+        };
+      })();
+    </script>
     <script type="module" crossorigin src="/assets/index-xJq1X-X0.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BrKI8fmv.css">
+    <style>
+      /* Desktop / laptop par site ko thoda bada dikhane ke liye (mobile par koi fark nahi padta) */
+      @media (min-width: 1280px) { html { font-size: 17px; } }
+      @media (min-width: 1536px) { html { font-size: 18.5px; } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
   </body>
 </html>
-
