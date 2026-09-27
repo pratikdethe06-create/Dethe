@@ -6,9 +6,13 @@
  *
  * Engine chain (same order as the original app):
  *   1. Sarvam AI bulbul:v3 — premium natural voices (all 37 DetheAI speakers)  [PREMIUM_TTS_KEY / SARVAM_API_KEY]
- *   2. Google Translate TTS — free fallback, no key (10 of 11 languages)
- *   3. Browser speechSynthesis — the frontend handles this automatically when audioBase64 is absent
+ *   2. Microsoft Edge "Read Aloud" neural voices — free, no key, very natural (9 Indian languages)
+ *   3. Google Translate TTS — free fallback (10 of 11 languages)
+ *   4. Browser speechSynthesis — the frontend handles this automatically when audioBase64 is absent
  */
+
+const tls = require('tls');
+const crypto = require('crypto');
 
 const SARVAM_KEY = process.env.PREMIUM_TTS_KEY || process.env.SARVAM_API_KEY || process.env.SARVAM_KEY || '';
 const SARVAM_MODEL = process.env.SARVAM_TTS_MODEL || 'bulbul:v3';
@@ -31,6 +35,19 @@ const MALE = new Set(['shubh','aditya','rahul','rohan','amit','dev','ratan','var
 
 const SARVAM_CODES = new Set(['hi-IN','en-IN','od-IN','ta-IN','te-IN','mr-IN','bn-IN','gu-IN','pa-IN','kn-IN','ml-IN']);
 const GTTS_CODES = { 'hi-IN':'hi','en-IN':'en','ta-IN':'ta','te-IN':'te','mr-IN':'mr','bn-IN':'bn','gu-IN':'gu','pa-IN':'pa','kn-IN':'kn','ml-IN':'ml' };
+
+// Microsoft Edge neural voices (from the original voices.ts — free, no key, natural)
+const NEURAL_VOICES = {
+  'hi-IN': { female: 'hi-IN-SwaraNeural',   male: 'hi-IN-MadhurNeural' },
+  'en-IN': { female: 'en-IN-NeerjaNeural',  male: 'en-IN-PrabhatNeural' },
+  'ta-IN': { female: 'ta-IN-PallaviNeural', male: 'ta-IN-ValluvarNeural' },
+  'te-IN': { female: 'te-IN-ShrutiNeural',  male: 'te-IN-MohanNeural' },
+  'mr-IN': { female: 'mr-IN-AarohiNeural',  male: 'mr-IN-ManoharNeural' },
+  'bn-IN': { female: 'bn-IN-TanishaaNeural',male: 'bn-IN-BashkarNeural' },
+  'gu-IN': { female: 'gu-IN-DhwaniNeural',  male: 'gu-IN-NiranjanNeural' },
+  'kn-IN': { female: 'kn-IN-SapnaNeural',   male: 'kn-IN-GaganNeural' },
+  'ml-IN': { female: 'ml-IN-SobhanaNeural', male: 'ml-IN-MidhunNeural' },
+};
 
 function sendJSON(res, code, obj) {
   res.writeHead(code, { ...CORS, 'Content-Type': 'application/json; charset=utf-8' });
@@ -118,7 +135,7 @@ function mergeAudioBuffers(bufs) {
   return { audio: buildWav(Buffer.concat(parsed.map((p) => p.pcm)), { channels, sampleRate, bits }), mimeType: 'audio/wav' };
 }
 
-/* ---------- engine 1: Sarvam AI (premium natural voices) ---------- */
+/* ================= Engine 1: Sarvam AI (premium natural voices) ================= */
 async function synthPremium({ text, speaker, languageCode, pace, temperature }) {
   const chunks = chunkText(text, MAX_INPUT_CHARS);
   if (!chunks.length) throw new Error('Empty script');
@@ -155,7 +172,188 @@ async function synthPremium({ text, speaker, languageCode, pace, temperature }) 
   return mergeAudioBuffers(parts);
 }
 
-/* ---------- engine 2: Google Translate TTS (free, no key) ---------- */
+/* ====== Engine 2: Microsoft Edge "Read Aloud" neural TTS (free, no key) ====== */
+/* Dependency-free WebSocket client over TLS — port of the original edge-tts.ts */
+
+const EDGE_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+const EDGE_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0';
+const EDGE_HOST = 'speech.platform.bing.com';
+let clockSkewSeconds = 0;
+
+function secMsGec() {
+  let ticks = Math.floor(Date.now() / 1000 + clockSkewSeconds) + 11644473600;
+  ticks -= ticks % 300;
+  return crypto.createHash('sha256').update((BigInt(ticks) * 10000000n).toString() + EDGE_TOKEN, 'ascii').digest('hex').toUpperCase();
+}
+
+function escapeXml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+function wsSendFrame(socket, text) {
+  const payload = Buffer.from(text, 'utf8');
+  const mask = crypto.randomBytes(4);
+  let header;
+  if (payload.length < 126) { header = Buffer.alloc(2); header[1] = 0x80 | payload.length; }
+  else if (payload.length < 65536) { header = Buffer.alloc(4); header[1] = 0x80 | 126; header.writeUInt16BE(payload.length, 2); }
+  else { header = Buffer.alloc(10); header[1] = 0x80 | 127; header.writeBigUInt64BE(BigInt(payload.length), 2); }
+  header[0] = 0x81; // FIN + text
+  const masked = Buffer.alloc(payload.length);
+  for (let i = 0; i < payload.length; i++) masked[i] = payload[i] ^ mask[i & 3];
+  socket.write(Buffer.concat([header, mask, masked]));
+}
+
+function edgeSynthOnce({ text, voice, locale, ratePct, pitchHz, volumePct, timeoutMs }) {
+  return new Promise((resolve, reject) => {
+    const connectionId = crypto.randomUUID().replace(/-/g, '');
+    const path = `/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${EDGE_TOKEN}&Sec-MS-GEC=${secMsGec()}&Sec-MS-GEC-Version=1-143.0.3650.75&ConnectionId=${connectionId}`;
+
+    let settled = false;
+    const socket = tls.connect({ host: EDGE_HOST, port: 443, servername: EDGE_HOST });
+    const finish = (err, buf) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { socket.destroy(); } catch {}
+      if (err) reject(err); else resolve(buf);
+    };
+    const timer = setTimeout(() => finish(new Error('Edge TTS timed out')), timeoutMs || 20000);
+
+    socket.on('error', (e) => finish(e instanceof Error ? e : new Error(String(e))));
+
+    let upgraded = false;
+    let buf = Buffer.alloc(0);
+    let msgType = 0;
+    let msgParts = [];
+    const audioChunks = [];
+
+    const handleMessage = (opcode, payload) => {
+      if (opcode === 1) {
+        if (payload.toString('utf8').includes('Path:turn.end')) finish(null, Buffer.concat(audioChunks));
+      } else if (opcode === 2) {
+        if (payload.length < 2) return;
+        const headerLen = payload.readUInt16BE(0);
+        const header = payload.subarray(2, 2 + headerLen).toString('utf8');
+        if (header.includes('Path:audio')) audioChunks.push(payload.subarray(2 + headerLen));
+      }
+    };
+
+    const parseFrames = () => {
+      for (;;) {
+        if (buf.length < 2) return;
+        const b0 = buf[0], b1 = buf[1];
+        const fin = (b0 & 0x80) !== 0;
+        const opcode = b0 & 0x0f;
+        const len = b1 & 0x7f;
+        let off = 2, plen;
+        if (len === 126) { if (buf.length < 4) return; plen = buf.readUInt16BE(2); off = 4; }
+        else if (len === 127) { if (buf.length < 10) return; plen = Number(buf.readBigUInt64BE(2)); off = 10; }
+        else plen = len;
+        if (buf.length < off + plen) return;
+        const payload = buf.subarray(off, off + plen);
+        buf = buf.subarray(off + plen);
+        if (opcode === 0x9) { // ping → pong
+          const mask = crypto.randomBytes(4);
+          const h = Buffer.alloc(2); h[0] = 0x8a; h[1] = 0x80 | payload.length;
+          const m = Buffer.alloc(payload.length);
+          for (let i = 0; i < payload.length; i++) m[i] = payload[i] ^ mask[i & 3];
+          socket.write(Buffer.concat([h, mask, m]));
+          continue;
+        }
+        if (opcode === 0x8) { finish(new Error('Edge TTS closed early')); return; }
+        if (opcode === 1 || opcode === 2) { msgType = opcode; msgParts = [payload]; }
+        else if (opcode === 0) { msgParts.push(payload); }
+        if (fin && msgParts.length) {
+          handleMessage(msgType, Buffer.concat(msgParts));
+          msgParts = []; msgType = 0;
+          if (settled) return;
+        }
+      }
+    };
+
+    const noteClockSkew = (headText) => {
+      const dm = /date:\s*(.+)/i.exec(headText);
+      if (dm) {
+        const parsed = Date.parse(dm[1]);
+        if (!Number.isNaN(parsed)) clockSkewSeconds += parsed / 1000 - Date.now() / 1000;
+      }
+    };
+
+    socket.on('connect', () => {
+      socket.write(
+        `GET ${path} HTTP/1.1\r\n` +
+        `Host: ${EDGE_HOST}\r\n` +
+        `Upgrade: websocket\r\n` +
+        `Connection: Upgrade\r\n` +
+        `Sec-WebSocket-Key: ${crypto.randomBytes(16).toString('base64')}\r\n` +
+        `Sec-WebSocket-Version: 13\r\n` +
+        `Origin: chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold\r\n` +
+        `User-Agent: ${EDGE_UA}\r\n` +
+        `Pragma: no-cache\r\n` +
+        `Cache-Control: no-cache\r\n` +
+        `Accept-Language: en-US,en;q=0.9\r\n\r\n`
+      );
+    });
+
+    socket.on('data', (chunk) => {
+      buf = Buffer.concat([buf, chunk]);
+      if (!upgraded) {
+        const idx = buf.indexOf('\r\n\r\n');
+        if (idx === -1) {
+          const nl = buf.indexOf('\r\n');
+          if (nl > 0 && !buf.subarray(0, nl).toString('latin1').includes('101')) {
+            noteClockSkew(buf.toString('latin1'));
+            finish(new Error(`Edge TTS handshake failed (${buf.subarray(0, nl).toString('latin1')})`));
+          }
+          return;
+        }
+        const head = buf.subarray(0, idx).toString('latin1');
+        if (!/^HTTP\/1\.1 101/.test(head)) {
+          noteClockSkew(head);
+          finish(new Error(`Edge TTS handshake failed (${head.split('\r\n')[0]})`));
+          return;
+        }
+        buf = buf.subarray(idx + 4);
+        upgraded = true;
+
+        const ts = new Date().toUTCString().replace('GMT', 'GMT+0000 (Coordinated Universal Time)');
+        wsSendFrame(socket,
+          `X-Timestamp:${ts}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
+          `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`);
+        const fmt = (n, u) => `${n >= 0 ? '+' : ''}${Math.round(n)}${u}`;
+        const ssml =
+          `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${locale}'>` +
+          `<voice name='${voice}'>` +
+          `<prosody pitch='${fmt(pitchHz || 0, 'Hz')}' rate='${fmt(ratePct || 0, '%')}' volume='${fmt(volumePct || 0, '%')}'>` +
+          escapeXml(text) +
+          `</prosody></voice></speak>`;
+        wsSendFrame(socket, `X-RequestId:${connectionId}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:${ts}Z\r\nPath:ssml\r\n\r\n${ssml}`);
+      }
+      if (upgraded) parseFrames();
+    });
+
+    socket.on('close', () => {
+      if (!settled) {
+        if (audioChunks.length) finish(null, Buffer.concat(audioChunks));
+        else finish(new Error('Edge TTS connection closed early'));
+      }
+    });
+  });
+}
+
+async function edgeSynth(opts) {
+  try {
+    return await edgeSynthOnce(opts);
+  } catch (err) {
+    // One retry — covers clock-skew token refresh and transient drops (same as original)
+    if (err instanceof Error && /handshake|closed early|timed out/i.test(err.message)) {
+      return edgeSynthOnce(opts);
+    }
+    throw err;
+  }
+}
+
+/* ================= Engine 3: Google Translate TTS (free, no key) ================= */
 async function gttsChunk(text, tl, idx, total) {
   const url =
     'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob' +
@@ -183,7 +381,7 @@ async function gttsChunk(text, tl, idx, total) {
   throw lastErr || new Error('gTTS failed');
 }
 
-/* ---------- handler ---------- */
+/* ============================ handler ============================ */
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
   if (req.method !== 'POST') return sendJSON(res, 405, { message: 'POST only' });
@@ -195,9 +393,9 @@ module.exports = async (req, res) => {
   const languageCode = String(body.languageCode || body.locale || 'hi-IN');
   const speakerRaw = String(body.voice || '').toLowerCase();
   const speaker = FEMALE.has(speakerRaw) || MALE.has(speakerRaw) ? speakerRaw : 'shubh';
+  const isFemale = FEMALE.has(speakerRaw);
   const speed = Number(body.speed) || 1;
   const emotion = Number(body.emotion ?? 64);
-  // emotion slider (0–100) → Sarvam temperature (expressiveness)
   const temperature = clamp(0.2 + (emotion / 100) * 1.4, 0.01, 2);
 
   if (!text) return sendJSON(res, 400, { message: 'Write something first — your voice is waiting.' });
@@ -228,7 +426,28 @@ module.exports = async (req, res) => {
     }
   }
 
-  /* 2) Standard fallback — Google Translate TTS (no key) */
+  /* 2) Neural natural voices — Microsoft Edge Read Aloud (free, no key) */
+  const nv = NEURAL_VOICES[languageCode];
+  if (nv) {
+    try {
+      const voiceName = isFemale ? nv.female : nv.male;
+      const chunks = chunkText(text, 1500);
+      const parts = [];
+      for (const c of chunks) {
+        const buf = await edgeSynth({
+          text: c, voice: voiceName, locale: languageCode,
+          ratePct: Math.round((speed - 1) * 100), pitchHz: 0, volumePct: 0,
+          timeoutMs: 20000,
+        });
+        if (buf.length > 200) parts.push(buf);
+      }
+      if (parts.length) return respond(Buffer.concat(parts), 'audio/mpeg', 'edge', 'natural');
+    } catch (e) {
+      console.error('[voice/generate] neural failed:', e.message);
+    }
+  }
+
+  /* 3) Standard fallback — Google Translate TTS (no key) */
   const gCode = GTTS_CODES[languageCode] || null;
   if (gCode) {
     try {
@@ -236,7 +455,7 @@ module.exports = async (req, res) => {
       const bufs = [];
       for (let i = 0; i < chunks.length; i++) {
         bufs.push(await gttsChunk(chunks[i], gCode, i, chunks.length));
-        if (i < chunks.length - 1) await new Promise((ok) => setTimeout(ok, 120));
+        if (i < chunks.length - 1) await new Promise((ok) => setTimeout(ok, 100));
       }
       if (bufs.length) return respond(Buffer.concat(bufs), 'audio/mpeg', 'google-translate', 'standard');
     } catch (e) {
@@ -244,7 +463,7 @@ module.exports = async (req, res) => {
     }
   }
 
-  /* 3) Nothing produced → let the browser speak (frontend handles this) */
+  /* 4) Nothing produced → let the browser speak (frontend handles this) */
   return sendJSON(res, 200, {
     provider: 'browser',
     words,
