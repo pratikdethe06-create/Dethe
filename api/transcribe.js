@@ -1,0 +1,77 @@
+/**
+ * DetheAI — POST /api/transcribe
+ *
+ * The DetheAI frontend does not upload media to this endpoint — it sends
+ * { language, mode, textSnippet }. We return a working demo transcript with
+ * proper timestamps so the studio, SRT/VTT export and copy features all work.
+ *
+ * Response: { transcript: { text, language, duration, segments: [{ start, end, text }] } }
+ */
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+function sendJSON(res, code, obj) {
+  res.writeHead(code, { ...CORS, 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(obj));
+}
+
+const DEMO_LINES = {
+  hindi:     ['नमस्ते! आज हम सीखेंगे कि वीडियो से टेक्स्ट कैसे बनाते हैं।', 'बस अपना वीडियो अपलोड करें और भाषा चुनें।', 'कुछ ही सेकंड में साफ़ ट्रांसक्रिप्ट तैयार।'],
+  english:   ['Hello! Today we will learn how to turn videos into text.', 'Just upload your video and choose a language.', 'In a few seconds your clean transcript is ready.'],
+  odia:      ['ନମସ୍କାର! ଆଜି ଆମେ ଶିଖିବା କିପରି ଭିଡିଓରୁ ଟେକ୍ସଟ୍ ତିଆରି ହୁଏ।', 'କେବଳ ଆପଣଙ୍କ ଭିଡିଓ ଅପଲୋଡ୍ କରନ୍ତୁ ଏବଂ ଭାଷା ବାଛନ୍ତୁ।', 'କିଛି ସେକେଣ୍ଡରେ ସଫା ଟ୍ରାନ୍ସକ୍ରିପ୍ଟ ପ୍ରସ୍ତୁତ।'],
+  tamil:     ['வணக்கம்! இன்று வீடியோவை டெக்ஸ்ட்டாக மாற்றுவது எப்படி என்று கற்போம்.', 'உங்கள் வீடியோவை பதிவேற்றி மொழியைத் தேர்ந்தெடுங்கள்.', 'சில விநாடிகளில் சரியான டிரான்ஸ்கிரிப்ட் தயார்.'],
+  telugu:    ['నమస్కారం! ఈరోజు వీడియోను టెక్స్ట్‌గా ఎలా మార్చాలో నేర్చుకుంటాము.', 'మీ వీడియోను అప్‌లోడ్ చేసి భాషను ఎంచుకోండి.', 'కొన్ని క్షణాల్లో స్పష్టమైన ట్రాన్స్‌క్రిప్ట్ సిద్ధం.'],
+  marathi:   ['नमस्कार! आज आपण शिकणार आहोत की व्हिडिओमधून मजकूर कसा बनवायचा.', 'फक्त तुमचा व्हिडिओ अपलोड करा आणि भाषा निवडा.', 'काही सेकंदांत स्वच्छ ट्रान्सक्रिप्ट तयार.'],
+  bengali:   ['নমস্কার! আজ আমরা শিখব কীভাবে ভিডিও থেকে টেক্সট তৈরি করা যায়।', 'আপনার ভিডিও আপলোড করুন এবং ভাষা বেছে নিন।', 'কয়েক সেকেন্ডেই পরিষ্কার ট্রান্সক্রিপ্ট প্রস্তুত।'],
+  gujarati:  ['નમસ્તે! આજે આપણે શીખીશું કે વિડિયોમાંથી ટેક્સ્ટ કેવી રીતે બનાવવું.', 'તમારો વિડિયો અપલોડ કરો અને ભાષા પસંદ કરો.', 'કેટલાક સેકંડમાં સાફ ટ્રાન્સક્રિપ્ટ તૈયાર.'],
+  punjabi:   ['ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਅੱਜ ਅਸੀਂ ਸਿੱਖਾਂਗੇ ਕਿ ਵੀਡੀਓ ਤੋਂ ਟੈਕਸਟ ਕਿਵੇਂ ਬਣਾਈਏ।', 'ਆਪਣਾ ਵੀਡੀਓ ਅਪਲੋਡ ਕਰੋ ਅਤੇ ਭਾਸ਼ਾ ਚੁਣੋ।', 'ਕੁਝ ਸਕਿੰਟਾਂ ਵਿੱਚ ਸਾਫ਼ ਟ੍ਰਾਂਸਕ੍ਰਿਪਟ ਤਿਆਰ।'],
+  kannada:   ['ನಮಸ್ಕಾರ! ಇಂದು ವೀಡಿಯೊದಿಂದ ಪಠ್ಯವನ್ನು ಹೇಗೆ ಮಾಡುವುದು ಎಂದು ಕಲಿಯೋಣ.', 'ನಿಮ್ಮ ವೀಡಿಯೊವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.', 'ಕೆಲವೇ ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಸ್ಪಷ್ಟ ಪ್ರತಿಲೇಖನ ಸಿದ್ಧ.'],
+  malayalam: ['നമസ്കാരം! ഇന്ന് വീഡിയോയിൽ നിന്ന് ടെക്സ്റ്റ് ഉണ്ടാക്കുന്ന വിധം പഠിക്കാം.', 'നിങ്ങളുടെ വീഡിയോ അപ്‌ലോഡ് ചെയ്ത് ഭാഷ തിരഞ്ഞെടുക്കുക.', 'അൽപ സെക്കൻഡുകൾക്കുള്ളിൽ വ്യക്തമായ ട്രാൻസ്ക്രിപ്റ്റ് തയ്യാർ.'],
+};
+
+function pickLines(language, snippet) {
+  const key = String(language || 'Hindi').trim().toLowerCase();
+  const lines = DEMO_LINES[key] || DEMO_LINES.hindi;
+  if (snippet && snippet.trim()) {
+    // the frontend passes "Transcribed from <filename>: <text>" — keep the text part
+    const cleaned = snippet.includes(':') && snippet.toLowerCase().includes('transcribed')
+      ? snippet.slice(snippet.indexOf(':') + 1).trim()
+      : snippet.trim();
+    if (cleaned) return cleaned.split(/(?<=[.!?।॥\n])\s+/).map((s) => s.trim()).filter(Boolean).slice(0, 12);
+  }
+  return lines;
+}
+
+module.exports = async (req, res) => {
+  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+  if (req.method !== 'POST') return sendJSON(res, 405, { message: 'POST only' });
+
+  let body = {};
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {}); } catch {}
+
+  const lines = pickLines(body.language, body.textSnippet);
+  if (!lines.length) return sendJSON(res, 400, { message: 'Nothing to transcribe.' });
+
+  const segments = [];
+  let t = 0;
+  for (const line of lines) {
+    const words = line.split(/\s+/).filter(Boolean).length;
+    const dur = Math.max(1.6, words * 0.42);
+    segments.push({ start: Math.round(t * 100) / 100, end: Math.round((t + dur) * 100) / 100, text: line });
+    t += dur + 0.35;
+  }
+
+  return sendJSON(res, 200, {
+    transcript: {
+      text: lines.join(' '),
+      language: body.language || 'Hindi',
+      mode: 'demo',
+      duration: Math.round(t * 100) / 100,
+      segments,
+    },
+  });
+};
