@@ -10,7 +10,7 @@
  *   3. Built-in template generator (no key required)
  */
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GIMINI_APU_KEY || '';
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 
 const CORS = {
