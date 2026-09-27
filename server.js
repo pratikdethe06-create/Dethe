@@ -15,6 +15,7 @@ const HANDLERS = {
   '/api/ai/script': require('./api/ai/script'),
   '/api/transcribe': require('./api/transcribe'),
   '/api/auth/google/url': require('./api/auth/google/url'),
+  '/api/auth/google/callback': require('./api/auth/google/callback'),
   '/api/billing/checkout': require('./api/billing/checkout'),
   '/api/billing/verify': require('./api/billing/verify'),
 };
