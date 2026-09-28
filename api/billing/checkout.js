@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
   if (!KEY_ID || !KEY_SECRET) {
     return sendJSON(res, 200, {
       configured: false,
-      message: 'Payment gateway is being set up. Please contact pratikdethe06@gmail.com to activate your plan.',
+      message: 'Payment gateway is being set up. Please try again shortly.',
     });
   }
 
