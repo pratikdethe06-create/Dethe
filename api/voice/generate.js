@@ -33,14 +33,24 @@ const CORS = {
 const FEMALE = new Set(['priya','ritu','neha','pooja','simran','kavya','ishita','shreya','roopa','tanya','shruti','suhani','kavitha','rupali']);
 const MALE = new Set(['shubh','aditya','rahul','rohan','amit','dev','ratan','varun','manan','sumit','kabir','aayan','ashutosh','advait','anand','tarun','sunny','mani','gokul','vijay','mohit','rehan','soham']);
 
-/* DetheAI voice pitch signature — har voice ki apni pitch, taaki sab ALAG sunai dein
-   (Edge engine me har bhasha ke 2 base voice hote hain — pitch se hum unhe 8-8 alag
-   profiles me badal dete hain: priya ≠ ritu ≠ neha, shubh ≠ aditya ≠ rahul ...) */
-const FEMALE_PITCHES = [-10, 0, 10, 20, -15, -5, 5, 15];   // Hz offset — 10Hz kadam, har voice saaf alag
-const MALE_PITCHES   = [-25, -10, 5, -20, -5, 10, -15, 0]; // Hz offset
-const VOICE_PITCH = {};
-[...FEMALE].forEach((n, i) => { VOICE_PITCH[n] = FEMALE_PITCHES[i % FEMALE_PITCHES.length]; });
-[...MALE].forEach((n, i)   => { VOICE_PITCH[n] = MALE_PITCHES[i % MALE_PITCHES.length]; });
+/* ── DetheAI VOICE PROFILES — har character ki BILKUL apni awaaz ────────────────
+   Har bhasha ke native neural pair (Swara/Madhur etc.) ke saath ab 4 Microsoft
+   MULTILINGUAL base voices (Ava, Emma, Andrew, Brian — ye har Indian bhasha bol
+   sakti hain, aur inki awaaz asli me alag-alag logon jaisi hai) milte hain.
+   Har speaker ka apna base voice + pitch level = har character distinct.
+   Cycle: priya→Swara, ritu→Ava, neha→Emma, pooja→Swara(+pitch), simran→Ava(+pitch)... */
+const ML_FEMALE = ['en-US-AvaMultilingualNeural', 'en-US-EmmaMultilingualNeural'];
+const ML_MALE   = ['en-US-AndrewMultilingualNeural', 'en-US-BrianMultilingualNeural'];
+const PITCH_LEVELS = [-12, 0, 12, -20, 20, -6, 6, 18];
+const FEMALE_LIST = [...FEMALE];
+const MALE_LIST = [...MALE];
+function voiceProfile(speaker, nv) {
+  const isF = FEMALE.has(speaker);
+  const i = isF ? FEMALE_LIST.indexOf(speaker) : MALE_LIST.indexOf(speaker);
+  if (i < 0) return { voice: nv.male, pitch: 0 };
+  const bases = isF ? [nv.female, ...ML_FEMALE] : [nv.male, ...ML_MALE];
+  return { voice: bases[i % 3], pitch: PITCH_LEVELS[Math.floor(i / 3) % PITCH_LEVELS.length] };
+}
 
 const SARVAM_CODES = new Set(['hi-IN','en-IN','od-IN','ta-IN','te-IN','mr-IN','bn-IN','gu-IN','pa-IN','kn-IN','ml-IN']);
 const GTTS_CODES = { 'hi-IN':'hi','en-IN':'en','ta-IN':'ta','te-IN':'te','mr-IN':'mr','bn-IN':'bn','gu-IN':'gu','pa-IN':'pa','kn-IN':'kn','ml-IN':'ml' };
@@ -441,13 +451,14 @@ module.exports = async (req, res) => {
   const nv = NEURAL_VOICES[languageCode];
   if (nv) {
     try {
-      const voiceName = isFemale ? nv.female : nv.male;
+      const prof = voiceProfile(speaker, nv);
+      const voiceName = prof.voice;
       const chunks = chunkText(text, 1500);
       const parts = [];
       for (const c of chunks) {
         const buf = await edgeSynth({
           text: c, voice: voiceName, locale: languageCode,
-          ratePct: Math.round((speed - 1) * 100), pitchHz: VOICE_PITCH[speaker] || 0, volumePct: 0,
+          ratePct: Math.round((speed - 1) * 100), pitchHz: prof.pitch, volumePct: 0,
           timeoutMs: 20000,
         });
         if (buf.length > 200) parts.push(buf);
