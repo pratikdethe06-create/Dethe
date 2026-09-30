@@ -8,6 +8,8 @@
     }
   },
   "rewrites": [
+    { "source": "/api", "destination": "/api.html" },
+    { "source": "/api-keys", "destination": "/api-keys.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

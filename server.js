@@ -18,6 +18,11 @@ const HANDLERS = {
   '/api/auth/google/callback': require('./api/auth/google/callback'),
   '/api/billing/checkout': require('./api/billing/checkout'),
   '/api/billing/verify': require('./api/billing/verify'),
+  '/api/keys/issue': require('./api/keys/[action]'),
+  '/api/keys/info': require('./api/keys/[action]'),
+  '/api/keys/revoke': require('./api/keys/[action]'),
+  '/api/v1/tts': require('./api/v1/tts'),
+  '/api/v1/voices': require('./api/v1/voices'),
 };
 
 const MIME = {
@@ -78,6 +83,9 @@ const server = http.createServer(async (req, res) => {
   // --- static files from public/ (SPA fallback to index.html) ---
   let filePath = path.normalize(path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname));
   if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end('Forbidden'); }
+  // clean-URL rewrites (mirrors vercel.json)
+  if (pathname === '/api' || pathname === '/api/') filePath = path.join(PUBLIC_DIR, 'api.html');
+  if (pathname === '/api-keys' || pathname === '/api-keys/') filePath = path.join(PUBLIC_DIR, 'api-keys.html');
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     filePath = path.join(PUBLIC_DIR, 'index.html'); // SPA fallback (mirrors vercel.json rewrites)
   }

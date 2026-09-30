@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DetheAI Text-to-Speech API — 37 Indian Studio Voices over REST</title>
+<meta name="description" content="Developer API for ultra-realistic Indian text-to-speech. 37 studio voices, 11 Indian languages, simple REST. Included with DetheAI Pro & Business plans.">
+<link rel="canonical" href="https://www.dethe.in/api">
+<style>
+  :root{--green:#1b7d5d;--green-dark:#146a4f;--ink:#17231f;--muted:#81766c;--line:#eadfd2;--bg:#fffdf8;--bg2:#f7f1e8;--card:#ffffff}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px}
+  header{border-bottom:1px solid var(--line);background:rgba(255,253,248,.92);position:sticky;top:0;z-index:10;backdrop-filter:blur(8px)}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.03em;text-decoration:none;color:var(--ink)}
+  .logo .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#0f2fd6,#1c8cff);display:grid;place-items:center;color:#fff;font-size:15px;font-weight:800}
+  .logo .ai{color:var(--green)}
+  nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;margin-left:18px}
+  nav a:hover{color:var(--ink)}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:#dcefe4;color:var(--green);font-weight:700;font-size:12px;padding:5px 12px;border-radius:999px;letter-spacing:.04em;text-transform:uppercase}
+  .hero{padding:64px 0 40px;text-align:center}
+  .hero h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.04em;line-height:1.15;margin:18px 0 14px}
+  .hero p{color:var(--muted);font-size:17px;max-width:640px;margin:0 auto}
+  .cta-row{display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+  .btn{display:inline-block;padding:13px 26px;border-radius:14px;font-weight:700;font-size:15px;text-decoration:none;transition:.15s}
+  .btn-primary{background:var(--green);color:#fff;box-shadow:0 8px 18px rgba(27,125,93,.25)}
+  .btn-primary:hover{background:var(--green-dark)}
+  .btn-ghost{border:1.5px solid var(--line);color:var(--ink);background:#fff}
+  .btn-ghost:hover{border-color:var(--green)}
+  section{padding:44px 0;border-top:1px solid var(--line)}
+  h2{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-bottom:6px}
+  h2 .num{color:var(--green);font-size:14px;display:block;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+  .sub{color:var(--muted);margin-bottom:22px;font-size:15px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 2px 10px rgba(23,35,31,.04)}
+  pre{background:#0e1a15;color:#d7efe3;border-radius:14px;padding:18px;overflow-x:auto;font-size:13px;line-height:1.65;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre .c{color:#6fa890}
+  pre .k{color:#7fd0a8}
+  code.inline{background:var(--bg2);border:1px solid var(--line);padding:2px 7px;border-radius:7px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding:10px 12px;border-bottom:2px solid var(--line)}
+  td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{white-space:nowrap;font-weight:700}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+  .voice{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 13px;margin:3px;font-size:13px;font-weight:600}
+  .voice.f{border-color:#f0d9e4;background:#fdf5f8}
+  .voice.m{border-color:#d5e7f2;background:#f3f9fd}
+  .tag{font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--green)}
+  footer{border-top:1px solid var(--line);padding:30px 0;text-align:center;color:var(--muted);font-size:14px}
+  footer a{color:var(--green);text-decoration:none;font-weight:700}
+</style>
+</head>
+<body>
+<header><div class="wrap nav">
+  <a class="logo" href="https://www.dethe.in/"><span class="mark">D</span>Dethe<span class="ai">AI</span> <span style="font-size:12px;color:var(--muted);font-weight:700">· API</span></a>
+  <nav>
+    <a href="https://www.dethe.in/">Studio</a>
+    <a href="https://www.dethe.in/#pricing">Pricing</a>
+    <a href="/api-keys">My API Keys</a>
+  </nav>
+</div></header>
+
+<div class="wrap hero">
+  <span class="pill">⚡ Developer API · included with Pro &amp; Business</span>
+  <h1>37 ultra-realistic Indian voices,<br>one simple REST call.</h1>
+  <p>Turn any text into natural studio-quality speech in 11 Indian languages — from your own app, script, bot or workflow. Same engine that powers DetheAI.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/api-keys">Get your API key →</a>
+    <a class="btn btn-ghost" href="#quickstart">Read the docs</a>
+  </div>
+</div>
+
+<section id="quickstart"><div class="wrap">
+  <h2><span class="num">01</span>Quickstart</h2>
+  <p class="sub">Generate your first voiceover in 30 seconds. Get a key from the <a href="/api-keys" style="color:var(--green);font-weight:700">API console</a> (Pro &amp; Business plans), then:</p>
+  <div class="card"><pre>curl -X POST https://www.dethe.in/api/v1/tts \
+  -H "Authorization: Bearer dth_live_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "नमस्ते! यह DetheAI की आवाज़ है।",
+    "voice": "priya",
+    "languageCode": "hi-IN"
+  }' <span class="c">| jq -r .audioBase64 | base64 -d > voice.mp3</span></pre></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2><span class="num">02</span>Authentication</h2>
+  <p class="sub">Every request needs your API key in the <code class="inline">Authorization</code> header. Keys are issued instantly on the <a href="/api-keys" style="color:var(--green);font-weight:700">API console</a> after upgrading to Pro or Business.</p>
+  <div class="card"><pre>Authorization: Bearer dth_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre></div>
+  <p class="sub" style="margin-top:14px">🔒 Keep your key secret — anyone holding it can spend your credits. Revoke &amp; reissue anytime from the console.</p>
+</div></section>
+
+<section><div class="wrap">
+  <h2><span class="num">03</span>Endpoints</h2>
+  <table>
+    <tr><th>Method</th><th>Endpoint</th><th>What it does</th></tr>
+    <tr><td>POST</td><td><code class="inline">/api/v1/tts</code></td><td>Text → speech (returns base64 MP3)</td></tr>
+    <tr><td>GET</td><td><code class="inline">/api/v1/voices</code></td><td>All 37 voices + 11 languages (no auth)</td></tr>
+    <tr><td>POST</td><td><code class="inline">/api/keys/issue</code></td><td>Issue a key (needs payment proof — console does this)</td></tr>
+    <tr><td>POST</td><td><code class="inline">/api/keys/info</code></td><td>Check key balance &amp; expiry</td></tr>
+    <tr><td>POST</td><td><code class="inline">/api/keys/revoke</code></td><td>Permanently delete a key</td></tr>
+  </table>
+</div></section>
+
+<section><div class="wrap">
+  <h2><span class="num">04</span>POST /api/v1/tts — request</h2>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>text <span class="tag">required</span></td><td>string</td><td>1–3,000 characters per request</td></tr>
+    <tr><td>voice</td><td>string</td><td>Any of the 37 voices below. Default: <code class="inline">shubh</code></td></tr>
+    <tr><td>languageCode</td><td>string</td><td><code class="inline">hi-IN</code> (default), <code class="inline">en-IN</code>, <code class="inline">ta-IN</code>, <code class="inline">te-IN</code>, <code class="inline">mr-IN</code>, <code class="inline">bn-IN</code>, <code class="inline">gu-IN</code>, <code class="inline">pa-IN</code>, <code class="inline">kn-IN</code>, <code class="inline">ml-IN</code>, <code class="inline">od-IN</code></td></tr>
+    <tr><td>speed</td><td>number</td><td>0.5 – 2.0, default 1.0</td></tr>
+  </table>
+  <h2 style="margin-top:28px;font-size:20px">Response</h2>
+  <div class="card"><pre>{
+  <span class="k">"audioBase64"</span>:     <span class="c">"//uQxAAAAAABJRU5ErkJggg==…",  // base64 MP3</span>
+  <span class="k">"mimeType"</span>:       "audio/mpeg",
+  <span class="k">"provider"</span>:       "sarvam",          <span class="c">// sarvam | edge | google-translate</span>
+  <span class="k">"voice"</span>:          "priya",
+  <span class="k">"languageCode"</span>:   "hi-IN",
+  <span class="k">"words"</span>:          7,
+  <span class="k">"creditsUsed"</span>:    500,
+  <span class="k">"creditsRemaining"</span>: 49500,
+  <span class="k">"plan"</span>:           "Pro"
+}</pre></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2><span class="num">05</span>Credits &amp; limits</h2>
+  <div class="grid3">
+    <div class="card"><h3 style="font-size:15px;margin-bottom:6px">💎 Same credit economy</h3><p style="font-size:14px;color:var(--muted)">500 credits per 100-word block (min 500/request). Pro = 50,000/month, Business = 200,000/month — credits refill automatically every 30 days.</p></div>
+    <div class="card"><h3 style="font-size:15px;margin-bottom:6px">📏 Per request</h3><p style="font-size:14px;color:var(--muted)">Max 3,000 characters. Keys stay valid while your plan is active (monthly = 30 days, yearly = 365 days).</p></div>
+    <div class="card"><h3 style="font-size:15px;margin-bottom:6px">🛟 Failed = free</h3><p style="font-size:14px;color:var(--muted)">If synthesis fails, credits are auto-refunded. You only pay for audio you actually receive.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2><span class="num">06</span>Errors</h2>
+  <table>
+    <tr><th>Status</th><th>code</th><th>Meaning</th></tr>
+    <tr><td>401</td><td><code class="inline">unauthorized / invalid_key / key_expired</code></td><td>Missing, wrong or expired key</td></tr>
+    <tr><td>400</td><td><code class="inline">empty_text</code></td><td><code class="inline">text</code> field missing</td></tr>
+    <tr><td>413</td><td><code class="inline">text_too_long</code></td><td>Over 3,000 characters — split the text</td></tr>
+    <tr><td>402</td><td><code class="inline">insufficient_credits</code></td><td>Monthly quota over — upgrade plan</td></tr>
+    <tr><td>503</td><td><code class="inline">synthesis_failed / storage_unavailable</code></td><td>Temporary — retry, credits refunded</td></tr>
+  </table>
+</div></section>
+
+<section><div class="wrap">
+  <h2><span class="num">07</span>Code samples</h2>
+  <div class="grid2">
+    <div class="card"><h3 style="font-size:14px;margin-bottom:10px">JavaScript</h3><pre>const r = await fetch(
+  "https://www.dethe.in/api/v1/tts",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer dth_live_KEY",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text: "Welcome to DetheAI!",
+      voice: "aditya",
+      languageCode: "en-IN",
+    }),
+  }
+).then((x) => x.json());
+
+const audio = new Audio(
+  "data:" + r.mimeType +
+  ";base64," + r.audioBase64
+);
+audio.play();</pre></div>
+    <div class="card"><h3 style="font-size:14px;margin-bottom:10px">Python</h3><pre>import requests, base64
+
+r = requests.post(
+    "https://www.dethe.in/api/v1/tts",
+    headers={"Authorization":
+             "Bearer dth_live_KEY"},
+    json={
+        "text": "नमस्ते दोस्तों!",
+        "voice": "priya",
+        "languageCode": "hi-IN",
+    },
+).json()
+
+with open("voice.mp3", "wb") as f:
+    f.write(base64.b64decode(
+        r["audioBase64"]))</pre></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2><span class="num">08</span>The 37 studio voices</h2>
+  <p class="sub">14 female + 23 male ultra-realistic voices. Try them all on the <a href="https://www.dethe.in/" style="color:var(--green);font-weight:700">DetheAI studio</a> before you pick.</p>
+  <div class="card" style="padding:16px">
+    <span class="tag">FEMALE</span><br>
+    <span class="voice f">priya</span><span class="voice f">ritu</span><span class="voice f">neha</span><span class="voice f">pooja</span><span class="voice f">simran</span><span class="voice f">kavya</span><span class="voice f">ishita</span><span class="voice f">shreya</span><span class="voice f">roopa</span><span class="voice f">tanya</span><span class="voice f">shruti</span><span class="voice f">suhani</span><span class="voice f">kavitha</span><span class="voice f">rupali</span>
+    <br><br><span class="tag">MALE</span><br>
+    <span class="voice m">shubh</span><span class="voice m">aditya</span><span class="voice m">rahul</span><span class="voice m">rohan</span><span class="voice m">amit</span><span class="voice m">dev</span><span class="voice m">ratan</span><span class="voice m">varun</span><span class="voice m">manan</span><span class="voice m">sumit</span><span class="voice m">kabir</span><span class="voice m">aayan</span><span class="voice m">ashutosh</span><span class="voice m">advait</span><span class="voice m">anand</span><span class="voice m">tarun</span><span class="voice m">sunny</span><span class="voice m">mani</span><span class="voice m">gokul</span><span class="voice m">vijay</span><span class="voice m">mohit</span><span class="voice m">rehan</span><span class="voice m">soham</span>
+  </div>
+</div></section>
+
+<div class="wrap" style="padding:56px 0;text-align:center">
+  <h2 style="font-size:28px">Ready to build with Indian voices?</h2>
+  <p class="sub" style="max-width:460px;margin:10px auto 24px">API access is included with Pro (₹799/mo) and Business (₹2,499/mo) — same credits work on the website and the API.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/api-keys">Get your API key →</a>
+    <a class="btn btn-ghost" href="https://www.dethe.in/#pricing">See pricing</a>
+  </div>
+</div>
+
+<footer class="wrap">DetheAI · Made in India 🇮🇳 · <a href="https://www.dethe.in/">dethe.in</a> · support: pratikdethe06@gmail.com</footer>
+</body>
+</html>
