@@ -170,7 +170,7 @@ async function synthPremium({ text, speaker, languageCode, pace, temperature }) 
         speaker,
         model: SARVAM_MODEL,
         pace: clamp(pace ?? 1, 0.5, 2),
-        temperature: clamp(temperature ?? 0.6, 0.01, 2),
+        temperature: clamp(temperature ?? 0.6, 0.01, 1),
         speech_sample_rate: 24000,
         output_audio_codec: 'mp3',
       }),
@@ -417,7 +417,7 @@ module.exports = async (req, res) => {
   const isFemale = FEMALE.has(speakerRaw);
   const speed = Number(body.speed) || 1;
   const emotion = Number(body.emotion ?? 64);
-  const temperature = clamp(0.2 + (emotion / 100) * 1.4, 0.01, 2);
+  const temperature = clamp(0.2 + (emotion / 100) * 0.7, 0.01, 0.95);
 
   if (!text) return sendJSON(res, 400, { message: 'Write something first — your voice is waiting.' });
   if (text.length > 20000) return sendJSON(res, 400, { message: 'This script exceeds the 20,000 character safety limit.' });
