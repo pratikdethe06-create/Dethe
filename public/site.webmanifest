@@ -1,0 +1,13 @@
+{
+  "name": "DetheAI — AI Text-to-Speech for India",
+  "short_name": "DetheAI",
+  "description": "37 ultra-realistic Indian studio voices across 11 languages. Text to speech, video to text, AI scripts.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffdf8",
+  "theme_color": "#1b7d5d",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

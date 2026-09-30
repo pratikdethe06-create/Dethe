@@ -3,12 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fffdf8" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <title>DetheAI — Free AI Text to Speech in Hindi & 11 Indian Languages</title>
     <meta name="description" content="Text to speech online FREE — Hindi, Marathi, Tamil, Telugu & 11 Indian languages me natural AI voice banao. 550+ voices for YouTube videos, reels & ads. AI script assistant included." />
     <meta property="og:title" content="DetheAI — Free AI Text to Speech in Hindi & 11 Indian Languages" />
     <meta property="og:description" content="Text to speech online FREE — 11 Indian languages, 550+ natural AI voices, AI script assistant. Hindi voice over generator for videos & reels." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.dethe.in/" />
+    <meta property="og:site_name" content="DetheAI" />
+    <meta property="og:image" content="https://www.dethe.in/assets/og-banner.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="DetheAI — AI Text-to-Speech for India" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://www.dethe.in/assets/og-banner.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -110,9 +122,15 @@
         };
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-dethe-v9.js"></script>
+    <script type="module" crossorigin src="/assets/index-dethe-v10.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BrKI8fmv.css">
     <style>
+      html{scroll-behavior:smooth}
+      /* 📱 Recent voiceovers — mobile par swipe rail (cards crop ho ke compact), desktop par list */
+      .recents-rail{display:flex;gap:.75rem;overflow-x:auto;padding-bottom:.5rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+      .recents-rail::-webkit-scrollbar{display:none}
+      .recents-card{flex:0 0 auto;width:min(340px,82%);scroll-snap-align:start}
+      @media(min-width:640px){.recents-rail{display:grid;grid-template-columns:1fr;overflow:visible;padding-bottom:0}.recents-card{width:auto}}
       /* Sirf ASLI desktop/laptop (mouse pointer) par site badi — phone/tablet par bilkul normal */
       @media (min-width: 1280px) and (pointer: fine) { html { font-size: 17px; } }
       @media (min-width: 1536px) and (pointer: fine) { html { font-size: 18.5px; } }
