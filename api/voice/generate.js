@@ -33,6 +33,10 @@ const CORS = {
 const FEMALE = new Set(['priya','ritu','neha','pooja','simran','kavya','ishita','shreya','roopa','tanya','shruti','suhani','kavitha','rupali']);
 const MALE = new Set(['shubh','aditya','rahul','rohan','amit','dev','ratan','varun','manan','sumit','kabir','aayan','ashutosh','advait','anand','tarun','sunny','mani','gokul','vijay','mohit','rehan','soham']);
 
+/* ── Freemium tiers: Free = 20 studio voices · Pro/Business = sab 37 ──
+   Preview (sunna) sabke liye free — full voiceover sirf paid members. */
+const PRO_SPEAKERS = new Set(['roopa','tanya','shruti','suhani','kavitha','rupali','ashutosh','advait','anand','tarun','sunny','mani','gokul','vijay','mohit','rehan','soham']);
+
 /* ── DetheAI VOICE PROFILES — har character ki BILKUL apni awaaz ────────────────
    Har bhasha ke native neural pair (Swara/Madhur etc.) ke saath ab 4 Microsoft
    MULTILINGUAL base voices (Ava, Emma, Andrew, Brian — ye har Indian bhasha bol
@@ -416,6 +420,10 @@ module.exports = async (req, res) => {
   const speaker = FEMALE.has(speakerRaw) || MALE.has(speakerRaw) ? speakerRaw : 'shubh';
   const isFemale = FEMALE.has(speakerRaw);
   const speed = Number(body.speed) || 1;
+  const plan = String(body.plan || 'Free');
+  if (PRO_SPEAKERS.has(speaker) && !body.preview && plan !== 'Pro' && plan !== 'Business') {
+    return sendJSON(res, 402, { message: '🔒 This premium studio voice is for Pro & Business members — upgrade to unlock all 37 ultra-realistic voices!' });
+  }
   const emotion = Number(body.emotion ?? 64);
   const temperature = clamp(0.2 + (emotion / 100) * 0.7, 0.01, 0.95);
 
