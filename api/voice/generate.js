@@ -33,6 +33,15 @@ const CORS = {
 const FEMALE = new Set(['priya','ritu','neha','pooja','simran','kavya','ishita','shreya','roopa','tanya','shruti','suhani','kavitha','rupali']);
 const MALE = new Set(['shubh','aditya','rahul','rohan','amit','dev','ratan','varun','manan','sumit','kabir','aayan','ashutosh','advait','anand','tarun','sunny','mani','gokul','vijay','mohit','rehan','soham']);
 
+/* DetheAI voice pitch signature — har voice ki apni pitch, taaki sab ALAG sunai dein
+   (Edge engine me har bhasha ke 2 base voice hote hain — pitch se hum unhe 8-8 alag
+   profiles me badal dete hain: priya ≠ ritu ≠ neha, shubh ≠ aditya ≠ rahul ...) */
+const FEMALE_PITCHES = [-10, 0, 10, 20, -15, -5, 5, 15];   // Hz offset — 10Hz kadam, har voice saaf alag
+const MALE_PITCHES   = [-25, -10, 5, -20, -5, 10, -15, 0]; // Hz offset
+const VOICE_PITCH = {};
+[...FEMALE].forEach((n, i) => { VOICE_PITCH[n] = FEMALE_PITCHES[i % FEMALE_PITCHES.length]; });
+[...MALE].forEach((n, i)   => { VOICE_PITCH[n] = MALE_PITCHES[i % MALE_PITCHES.length]; });
+
 const SARVAM_CODES = new Set(['hi-IN','en-IN','od-IN','ta-IN','te-IN','mr-IN','bn-IN','gu-IN','pa-IN','kn-IN','ml-IN']);
 const GTTS_CODES = { 'hi-IN':'hi','en-IN':'en','ta-IN':'ta','te-IN':'te','mr-IN':'mr','bn-IN':'bn','gu-IN':'gu','pa-IN':'pa','kn-IN':'kn','ml-IN':'ml' };
 
@@ -438,7 +447,7 @@ module.exports = async (req, res) => {
       for (const c of chunks) {
         const buf = await edgeSynth({
           text: c, voice: voiceName, locale: languageCode,
-          ratePct: Math.round((speed - 1) * 100), pitchHz: 0, volumePct: 0,
+          ratePct: Math.round((speed - 1) * 100), pitchHz: VOICE_PITCH[speaker] || 0, volumePct: 0,
           timeoutMs: 20000,
         });
         if (buf.length > 200) parts.push(buf);
