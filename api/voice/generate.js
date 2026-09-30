@@ -35,7 +35,8 @@ const MALE = new Set(['shubh','aditya','rahul','rohan','amit','dev','ratan','var
 
 /* ── Freemium tiers: Free = 20 studio voices · Pro/Business = sab 37 ──
    Preview (sunna) sabke liye free — full voiceover sirf paid members. */
-const PRO_SPEAKERS = new Set(['roopa','tanya','shruti','suhani','kavitha','rupali','ashutosh','advait','anand','tarun','sunny','mani','gokul','vijay','mohit','rehan','soham']);
+const FREE_SPEAKERS = new Set(['priya','ritu','neha','shubh','aditya','rahul']);
+const PRO_SPEAKERS = new Set([...FEMALE, ...MALE].filter(n => !FREE_SPEAKERS.has(n))); // 31 voices Pro-only
 
 /* ── DetheAI VOICE PROFILES — har character ki BILKUL apni awaaz ────────────────
    Har bhasha ke native neural pair (Swara/Madhur etc.) ke saath ab 4 Microsoft
@@ -424,6 +425,9 @@ module.exports = async (req, res) => {
   if (PRO_SPEAKERS.has(speaker) && !body.preview && plan !== 'Pro' && plan !== 'Business') {
     return sendJSON(res, 402, { message: '🔒 This premium studio voice is for Pro & Business members — upgrade to unlock all 37 ultra-realistic voices!' });
   }
+  if (!body.preview && plan === 'Free' && text.length > 1000) {
+    return sendJSON(res, 402, { message: '✂️ Free plan allows scripts up to 1,000 characters. Upgrade to Pro for unlimited-length scripts!' });
+  }
   const emotion = Number(body.emotion ?? 64);
   const temperature = clamp(0.2 + (emotion / 100) * 0.7, 0.01, 0.95);
 
@@ -431,7 +435,7 @@ module.exports = async (req, res) => {
   if (text.length > 20000) return sendJSON(res, 400, { message: 'This script exceeds the 20,000 character safety limit.' });
 
   const words = text.split(/\s+/).filter(Boolean).length;
-  const creditsCharged = Math.max(1, Math.ceil(words / 100) * 5); // DetheAI pricing: 5 credits per 100-word block
+  const creditsCharged = Math.max(1, Math.ceil(words / 100) * 500); // DetheAI economy: 500 credits/100-word block — Free 10k ≈ 10 videos, Pro 50k ≈ 50, Business 200k ≈ 200
   const respond = (audio, mimeType, provider, quality) =>
     sendJSON(res, 200, {
       audioBase64: audio.toString('base64'),
