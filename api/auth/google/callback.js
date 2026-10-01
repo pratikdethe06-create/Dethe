@@ -102,9 +102,17 @@ module.exports = async (req, res) => {
       avatar: prof.picture || '',
     };
     return page(res, 200, 'Login ho gaya! ✓', `
-      try{window.opener&&window.opener.postMessage(${jsSafe({ type: 'OAUTH_AUTH_SUCCESS', user })}, "*")}catch(e){}
-      document.getElementById("msg").textContent = "Welcome, ${String(user.name).replace(/["'<>\\\\]/g, '')}! Yeh window khud band ho jayegi…";
-      setTimeout(function(){window.close()}, 700);`);
+      var __p = ${JSON.stringify(encodeURIComponent(JSON.stringify(user)))};
+      try{
+        if(window.opener){
+          window.opener.postMessage(${jsSafe({ type: 'OAUTH_AUTH_SUCCESS', user })}, "*");
+          document.getElementById("msg").textContent = "Welcome, ${String(user.name).replace(/["'<>\\\\]/g, '')}! Yeh window khud band ho jayegi…";
+          setTimeout(function(){window.close()}, 700);
+        }else{
+          document.getElementById("msg").textContent = "Login ho gaya! Aapko DetheAI par bhej rahe hain…";
+          setTimeout(function(){window.location.replace("https://www.dethe.in/?dethe_glogin=" + __p)}, 500);
+        }
+      }catch(e){}`);
   } catch (e) {
     return page(res, 200, 'Network error', `
       document.getElementById("msg").textContent = ${jsSafe(String(e.message || e).slice(0, 140))};`);

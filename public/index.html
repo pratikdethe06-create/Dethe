@@ -122,7 +122,7 @@
         };
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-dethe-v11.js"></script>
+    <script type="module" crossorigin src="/assets/index-dethe-v12.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BrKI8fmv.css">
     <style>
       html{scroll-behavior:smooth}html,body{overflow-x:hidden}
@@ -149,6 +149,17 @@
 <script defer src="/_vercel/insights/script.js"></script>
 <script>
 (function(){var p=(location.pathname||"/").replace(/\/+$/,"")||"/";var m={"/video-to-text":["Video to Text — Indian Video Transcription | DetheAI","Convert video & audio to text in Hindi, Odia and 9 more Indian languages. Timestamps, SRT & TXT export. Free to start."],"/voices":["Voice Library — 37 Indian Studio Voices | DetheAI","Ultra-realistic Indian text-to-speech voices — 14 female & 23 male studio voices across 11 Indian languages. Listen free."],"/ai-script":["AI Script Writer — DetheAI","Generate voiceover scripts for reels, YouTube & stories in 11 Indian languages with AI, then convert to speech instantly."]};if(m[p]){document.title=m[p][0];var d=document.querySelector('meta[name="description"]');if(d)d.setAttribute("content",m[p][1]);}})();
+</script>
+<script>
+/* Google login (same-tab fallback): redirect se aaya user app tak pahunchao */
+(function(){try{
+  var m=/[?&]dethe_glogin=([^&]+)/.exec(location.search);
+  if(m){
+    var u=JSON.parse(decodeURIComponent(m[1]));
+    history.replaceState({},"",location.pathname||"/");
+    var n=0,t=setInterval(function(){n++;try{window.postMessage({type:"OAUTH_AUTH_SUCCESS",user:u},location.origin)}catch(e){}if(n>15)clearInterval(t)},400);
+  }
+}catch(e){}})();
 </script>
 </head>
   <body>
