@@ -125,7 +125,13 @@
     <script type="module" crossorigin src="/assets/index-dethe-v11.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BrKI8fmv.css">
     <style>
-      html{scroll-behavior:smooth}html,body{overflow-x:hidden;max-width:100vw}
+      html{scroll-behavior:smooth}html,body{overflow-x:hidden}
+      /* 🔍 Zoom fix: 16px se chhote input par phone FOCUS PAR ZOOM karta hai — isliye phone par sab inputs 16px */
+      @media (max-width: 640px) {
+        input, textarea, select { font-size: 16px !important; }
+      }
+      /* Double-tap zoom + 300ms tap-delay sirf buttons/links par band (pinch-zoom safe) */
+      button, a, [role="button"], label { touch-action: manipulation; }
       /* 📱 Recent voiceovers — mobile par swipe rail (cards crop ho ke compact), desktop par list */
       .recents-rail{display:flex;gap:.75rem;overflow-x:auto;padding-bottom:.5rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
       .recents-rail::-webkit-scrollbar{display:none}
