@@ -5,11 +5,14 @@
  * Response: { script }
  *
  * Provider chain:
- *   1. Google Gemini  [GEMINI_API_KEY — free at aistudio.google.com]
- *   2. OpenAI         [OPENAI_API_KEY]
- *   3. Built-in template generator (no key required)
+ *   1. Sarvam Chat (sarvam-105b) — Indian-language LLM  [SARVAM_API_KEY / PREMIUM_TTS_KEY — same key as voices]
+ *   2. Google Gemini  [GEMINI_API_KEY — free at aistudio.google.com]
+ *   3. OpenAI         [OPENAI_API_KEY]
+ *   4. Built-in template generator (no key required)
  */
 
+const SARVAM_KEY = process.env.PREMIUM_TTS_KEY || process.env.SARVAM_API_KEY || process.env.SARVAM_KEY || '';
+const SARVAM_CHAT_URL = 'https://api.sarvam.ai/v1/chat/completions';
 const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GIMINI_APU_KEY || '';
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 
@@ -42,6 +45,38 @@ function buildPrompt(o) {
     `- Strong opening hook in the first line, natural flow, ending with a short call-to-action.`,
     `- Output ONLY the script text. No titles, no headings, no quotes, no explanations.`,
   ].join('\n');
+}
+
+/* ── Sarvam Chat — Indian-language LLM (sarvam-105b → sarvam-30b) ── */
+async function sarvamScript(prompt) {
+  const models = [process.env.SARVAM_CHAT_MODEL, 'sarvam-105b', 'sarvam-30b'].filter(Boolean);
+  let lastErr;
+  for (const model of models) {
+    try {
+      const r = await fetch(SARVAM_CHAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'api-subscription-key': SARVAM_KEY },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: "You are DetheAI's professional voiceover script writer for Indian creators. You write engaging, natural, speakable scripts in any Indian language. Output ONLY the script text — no titles, no headings, no quotes, no explanations, no markdown.",
+            },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.8,
+          max_tokens: 1500,
+        }),
+      });
+      if (!r.ok) { lastErr = new Error(`Sarvam ${model} ${r.status}: ${(await r.text().catch(() => '')).slice(0, 120)}`); continue; }
+      const data = await r.json();
+      const text = String(data.choices?.[0]?.message?.content || '').trim();
+      if (text) return text;
+      lastErr = new Error('Sarvam empty response');
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('Sarvam failed');
 }
 
 async function geminiScript(prompt) {
@@ -148,6 +183,12 @@ module.exports = async (req, res) => {
 
   const prompt = buildPrompt(o);
 
+  if (SARVAM_KEY) {
+    try {
+      const script = await sarvamScript(prompt);
+      if (script) return sendJSON(res, 200, { script, provider: 'sarvam' });
+    } catch (e) { console.error('[ai/script] Sarvam failed:', e.message); }
+  }
   if (GEMINI_KEY) {
     try {
       const script = await geminiScript(prompt);
