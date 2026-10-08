@@ -1,15 +1,33 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "outputDirectory": "public",
+  "outputDirectory": "dist",
   "functions": {
     "api/**/*.js": {
       "maxDuration": 60
     }
   },
   "rewrites": [
-    { "source": "/api", "destination": "/api.html" },
-    { "source": "/api-keys", "destination": "/api-keys.html" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+    {
+      "source": "/api",
+      "destination": "/api.html"
+    },
+    {
+      "source": "/api-keys",
+      "destination": "/api-keys.html"
+    },
+    {
+      "source": "/voices",
+      "destination": "/voices.html"
+    },
+    {
+      "source": "/ai-script",
+      "destination": "/ai-script.html"
+    },
+    {
+      "source": "/video-to-text",
+      "destination": "/video-to-text.html"
+    }
+  ],
+  "buildCommand": "npm run build"
 }

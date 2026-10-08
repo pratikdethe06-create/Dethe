@@ -42,16 +42,13 @@
     var parts = String(text || '').replace(/([.!?\u0964\u0965])\s+/g, '$1\n').split('\n')
       .map(function (x) { return x.trim(); }).filter(Boolean);
     if (!parts.length) return [];
-    var tot = 0;
-    for (var i = 0; i < parts.length; i++) tot += parts[i].split(/\s+/).length;
-    tot = tot || 1;
-    var out = [], t = t0, span = Math.max(1, t1 - t0);
-    for (var j = 0; j < parts.length; j++) {
-      var d = Math.max(1.2, span * (parts[j].split(/\s+/).length / tot));
-      out.push({ start: Math.round(t * 100) / 100, end: Math.round(Math.min(t + d, t1) * 100) / 100, text: parts[j] });
-      t += d;
-      if (t >= t1 - 0.2) break;
-    }
+    var total = parts.reduce(function (n, part) { return n + part.split(/\s+/).length; }, 0);
+    var out = [], t = t0;
+    parts.forEach(function (part, index) {
+      var end = index === parts.length - 1 ? t1 : t + (t1 - t0) * part.split(/\s+/).length / total;
+      out.push({ start: t, end: Math.min(end, t1), text: part });
+      t = end;
+    });
     return out;
   }
 
@@ -70,7 +67,8 @@
     finally { try { ctx.close(); } catch (e) {} }
     if (!audio || !audio.duration || !isFinite(audio.duration)) throw new Error('Audio duration detect nahi hui — dusri file try karein.');
 
-    var SR = 16000, dur = Math.min(audio.duration, 600); /* max 10 minute */
+    if (audio.duration > 600) throw new Error('Please upload a clip of 10 minutes or less. Longer files are not trimmed automatically.');
+    var SR = 16000, dur = audio.duration;
     var off = new OC(1, Math.max(1, Math.ceil(dur * SR)), SR);
     var src = off.createBufferSource();
     src.buffer = audio; src.connect(off.destination); src.start(0);
@@ -84,7 +82,7 @@
       var slice = pcm.subarray(Math.floor(t0 * SR), Math.max(Math.floor(t0 * SR) + 1, Math.floor(t1 * SR)));
       var payload = await toB64(wav(slice, SR));
       var r = await fetch('/api/transcribe', {
-        method: 'POST',
+        method: 'POST', signal: AbortSignal.timeout(55000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'stt', audioBase64: payload, languageCode: code, chunk: i + 1, chunks: n })
       });
@@ -102,6 +100,8 @@
       text: texts.join(' '),
       language: language || 'Auto',
       duration: Math.round(dur * 100) / 100,
+      durationSec: Math.round(dur * 100) / 100,
+      wordCount: texts.join(' ').split(/\s+/).filter(Boolean).length,
       segments: segments,
       mode: 'real'
     };

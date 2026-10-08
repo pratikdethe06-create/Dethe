@@ -12,12 +12,12 @@
  */
 
 const SARVAM_KEY = process.env.PREMIUM_TTS_KEY || process.env.SARVAM_API_KEY || process.env.SARVAM_KEY || '';
-const SARVAM_CHAT_URL = 'https://api.sarvam.ai/v1/chat/completions';
+const SARVAM_CHAT_URL = process.env.SARVAM_CHAT_URL || 'https://api.sarvam.ai/v1/chat/completions';
 const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GIMINI_APU_KEY || '';
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Cache-Control': 'no-store',
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -54,7 +54,7 @@ async function sarvamScript(prompt) {
   for (const model of models) {
     try {
       const r = await fetch(SARVAM_CHAT_URL, {
-        method: 'POST',
+        method: 'POST', signal: AbortSignal.timeout(8000),
         headers: { 'Content-Type': 'application/json', 'api-subscription-key': SARVAM_KEY },
         body: JSON.stringify({
           model,
@@ -87,7 +87,7 @@ async function geminiScript(prompt) {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
         {
-          method: 'POST',
+          method: 'POST', signal: AbortSignal.timeout(8000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
         }
@@ -104,7 +104,7 @@ async function geminiScript(prompt) {
 
 async function openaiScript(prompt) {
   const r = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
+    method: 'POST', signal: AbortSignal.timeout(8000),
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
@@ -117,48 +117,6 @@ async function openaiScript(prompt) {
   const text = (data.choices?.[0]?.message?.content || '').trim();
   if (!text) throw new Error('OpenAI empty response');
   return text;
-}
-
-/* ---------- offline template fallback (works with no API key) ---------- */
-const L = {
-  hindi:      { greet: 'नमस्ते दोस्तों!', cta: 'ऐसे ही वीडियो के लिए DetheAI को फॉलो करें!' },
-  english:    { greet: 'Hey everyone!', cta: 'Follow DetheAI for more videos like this!' },
-  odia:       { greet: 'ନମସ୍କାର ବନ୍ଧୁଗଣ!', cta: 'ଏପରି ଭିଡିଓ ପାଇଁ DetheAI କୁ ଫଲୋ କରନ୍ତୁ!' },
-  tamil:      { greet: 'வணக்கம் நண்பர்களே!', cta: 'இப்படியான வீடியோக்களுக்கு DetheAI-ஐ பின்தொடருங்கள்!' },
-  telugu:     { greet: 'నమస్కారం మిత్రులారా!', cta: 'ఇలాంటి వీడియోల కోసం DetheAI ను ఫాలో చేయండి!' },
-  marathi:    { greet: 'नमस्कार मित्रांनो!', cta: 'अशाच व्हिडिओंसाठी DetheAI ला फॉलो करा!' },
-  bengali:    { greet: 'নমস্কার বন্ধুরা!', cta: 'এমন ভিডিওর জন্য DetheAI ফলো করুন!' },
-  gujarati:   { greet: 'નમસ્તે મિત્રો!', cta: 'આવા વિડિયો માટે DetheAI ને ફોલો કરો!' },
-  punjabi:    { greet: 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਦੋਸਤੋ!', cta: 'ਐਸੇ ਵੀਡੀਓ ਲਈ DetheAI ਨੂੰ ਫਾਲੋ ਕਰੋ!' },
-  kannada:    { greet: 'ನಮಸ್ಕಾರ ಗೆಳೆಯರೇ!', cta: 'ಹೀಗಾದ ವೀಡಿಯೊಗಳಿಗಾಗಿ DetheAI ಅನ್ನು ಫಾಲೋ ಮಾಡಿ!' },
-  malayalam:  { greet: 'നമസ്കാരം സുഹൃത്തുക്കളേ!', cta: 'ഇത്തരം വീഡിയോകൾക്ക് DetheAI ഫോളോ ചെയ്യൂ!' },
-};
-
-function templateScript(o) {
-  const langKey = String(o.language || 'Hindi').toLowerCase();
-  const t = L[langKey] || L.hindi;
-  const prompt = String(o.prompt || o.currentScript || '').trim();
-  const topic = (prompt.split(/[.!?\n।]/)[0] || 'this topic').slice(0, 120);
-  const tone = String(o.tone || 'natural');
-  const target = TARGET_WORDS[o.length] || 130;
-
-  const lines = [
-    `${t.greet} ${topic}.`,
-    ``,
-    `आज की इस वीडियो में हम इस विषय को गहराई से समझेंगे — ${tone} अंदाज़ में, बिल्कुल आसान भाषा में।`,
-    ``,
-    `सुरुआत में एक सवाल: क्या आपने कभी सोचा है कि यह असल में कैसे काम करता है?`,
-    `${prompt}`,
-    ``,
-    `अगर यह वीडियो अच्छा लगा, तो लाइक और शेयर ज़रूर करें।`,
-    `${t.cta}`,
-  ];
-  let script = lines.filter(Boolean).join('\n');
-  // top up length for medium/long targets
-  while (script.split(/\s+/).length < target * 0.85) {
-    script += `\n\nऔर एक बात — ${topic} को लेकर अपने अनुभव कमेंट में ज़रूर बताइए, ताकि अगले वीडियो में उसी पर गहराई से बात कर सकें।`;
-  }
-  return script;
 }
 
 module.exports = async (req, res) => {
@@ -181,6 +139,11 @@ module.exports = async (req, res) => {
     return sendJSON(res, 400, { message: 'Please describe what the script should be about.' });
   }
 
+  try {
+    const account = await require('../../shared/accounts').requireAccount(req);
+    await require('../../shared/accounts').dailyLimit(account.id, 'scripts', 20, 200);
+  } catch (error) { return sendJSON(res, error.status || 503, { message: error.status ? error.message : 'Account service is unavailable.' }); }
+
   const prompt = buildPrompt(o);
 
   if (SARVAM_KEY) {
@@ -202,6 +165,5 @@ module.exports = async (req, res) => {
     } catch (e) { console.error('[ai/script] OpenAI failed:', e.message); }
   }
 
-  // offline fallback
-  return sendJSON(res, 200, { script: templateScript(o), provider: 'template' });
+  return sendJSON(res, 503, { message: 'AI writing is temporarily unavailable. Please try again later or write your script in the voice studio.' });
 };

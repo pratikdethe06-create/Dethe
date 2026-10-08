@@ -18,6 +18,8 @@ const HANDLERS = {
   '/api/auth/google/callback': require('./api/auth/google/callback'),
   '/api/billing/checkout': require('./api/billing/checkout'),
   '/api/billing/verify': require('./api/billing/verify'),
+  '/api/auth/session': require('./api/auth/session'),
+  '/api/keys/list': require('./api/keys/[action]'),
   '/api/keys/issue': require('./api/keys/[action]'),
   '/api/keys/info': require('./api/keys/[action]'),
   '/api/keys/revoke': require('./api/keys/[action]'),
@@ -42,15 +44,23 @@ const MIME = {
   '.wav': 'audio/wav',
 };
 
+const { pages, renderPage } = require('./shared/seo-pages');
+
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 8080;
 
 function readBody(req) {
-  return new Promise((resolve) => {
-    const parts = [];
-    req.on('data', (d) => parts.push(d));
-    req.on('end', () => resolve(Buffer.concat(parts)));
-    req.on('error', () => resolve(Buffer.alloc(0)));
+  return new Promise((resolve, reject) => {
+    const parts = []; let size = 0; let tooLarge = false;
+    req.on('data', data => {
+      size += data.length;
+      if (size > 2 * 1024 * 1024) {
+        if (!tooLarge) reject(Object.assign(new Error('Request body too large.'), { status: 413 }));
+        tooLarge = true; parts.length = 0;
+      } else if (!tooLarge) parts.push(data);
+    });
+    req.on('end', () => { if (!tooLarge) resolve(Buffer.concat(parts)); });
+    req.on('error', reject);
   });
 }
 
@@ -66,28 +76,38 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
         const buf = await readBody(req);
         let body = {};
-        try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch {}
+        try { body = JSON.parse(buf.toString('utf8') || '{}'); } catch { throw Object.assign(new Error('Invalid JSON.'), { status: 400 }); }
         req.body = body;
       }
       await handler(req, res);
     } catch (e) {
-      console.error(`[api] ${pathname} crashed:`, e);
+      console.error(`[api] ${pathname} request failed`);
       if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.writeHead(e.status || 500, { 'Content-Type': 'application/json; charset=utf-8' });
       }
-      res.end(JSON.stringify({ message: 'Internal server error: ' + e.message }));
+      res.end(JSON.stringify({ message: e.status ? e.message : 'Internal server error.' }));
     }
     return;
   }
 
-  // --- static files from public/ (SPA fallback to index.html) ---
+  // Match the route-specific HTML emitted by the production build.
+  const cleanPath = pathname.replace(/\/+$/, '') || '/';
+  const pageRoute = Object.keys(pages).find(route => '/' + pages[route].file === cleanPath) || cleanPath;
+  if (Object.hasOwn(pages, pageRoute)) {
+    const template = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+    return res.end(renderPage(template, pageRoute));
+  }
+
+  // --- static files from public/ ---
   let filePath = path.normalize(path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname));
-  if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end('Forbidden'); }
+  if (path.relative(PUBLIC_DIR, filePath).startsWith('..')) { res.writeHead(403); return res.end('Forbidden'); }
   // clean-URL rewrites (mirrors vercel.json)
   if (pathname === '/api' || pathname === '/api/') filePath = path.join(PUBLIC_DIR, 'api.html');
   if (pathname === '/api-keys' || pathname === '/api-keys/') filePath = path.join(PUBLIC_DIR, 'api-keys.html');
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    filePath = path.join(PUBLIC_DIR, 'index.html'); // SPA fallback (mirrors vercel.json rewrites)
+    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+    return fs.createReadStream(path.join(PUBLIC_DIR, '404.html')).pipe(res);
   }
   const ext = path.extname(filePath).toLowerCase();
   res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'public, max-age=3600' });

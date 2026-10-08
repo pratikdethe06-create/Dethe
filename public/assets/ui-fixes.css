@@ -1,0 +1,51 @@
+/* Keep grid tracks shrinkable on small screens rather than hiding wide controls. */
+#studio > .container { grid-template-columns: minmax(0, 1fr); }
+#studio > .container > *, #studio .studio-shadow, #studio textarea { min-width: 0; max-width: 100%; }
+@media (min-width: 1024px) {
+  #studio > .container { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); }
+}
+@media (max-width: 639px) {
+  #studio > .container { padding-inline: 0; }
+  #studio .studio-shadow { padding: 12px; }
+  #studio .studio-shadow > div { padding: 16px; }
+  #studio label + button { max-width: 65%; }
+}
+.account-dialog { box-sizing: border-box; width: min(440px, calc(100% - 32px)); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid #d8cec2; border-radius: 24px; padding: 28px; color: #17231f; background: #fffdf8; font: 16px/1.6 system-ui, sans-serif; }
+.account-dialog::backdrop { background: rgb(23 35 31 / 65%); }
+.account-dialog h2 { font-size: 26px; margin: 16px 0; }
+.account-dialog p { margin: 16px 0; }
+.account-close { float: right; border: 0; background: transparent; color: #17231f; font-size: 28px; cursor: pointer; }
+.account-google { display: block; width: 100%; padding: 14px; border: 0; border-radius: 12px; font: 700 16px system-ui; color: white; background: #146a4f; cursor: pointer; }
+.account-status { color: #8a3020; }
+.account-note { font-size: 14px; color: #5f574f; }
+button:focus-visible, a:focus-visible { outline: 2px solid #146a4f; outline-offset: 3px; }
+
+[class~="text-[#81766c]"],
+[class~="text-[#8a7e72]"],
+[class~="text-[#8b7e72]"],
+[class~="text-[#8c8176]"],
+[class~="text-[#8f8378]"],
+[class~="text-[#9a8d80]"],
+[class~="text-[#9b8f83]"],
+[class~="text-[#9e9185]"],
+[class~="text-[#a08f82]"],
+[class~="text-[#a09488]"],
+[class~="text-[#a3978a]"],
+[class~="text-[#a89b8e]"],
+[class~="text-[#a89c90]"],
+[class~="text-[#c5bcb2]"],
+[class~="text-[#789183]"],
+[class~="text-[#507a66]"] { color: #62584f; }
+[class~="text-[#1b7d5d]"] { color: #146a4f; }
+[class~="text-[#a06214]"], [class~="text-[#9b5e19]"] { color: #805017; }
+
+[class~="text-[#786d63]"] { color: #62584f; }
+#studio .pointer-events-none { max-width: 100%; right: 0; }
+#studio [aria-haspopup] > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* The full signed-in navigation needs more space than a tablet provides. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  header [class~="md:flex"] { display: none; }
+  header [class~="md:hidden"] { display: block; }
+}
+.recents-rail, .recents-card { min-width: 0; max-width: 100%; }

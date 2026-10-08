@@ -98,9 +98,9 @@
     <tr><th>Method</th><th>Endpoint</th><th>What it does</th></tr>
     <tr><td>POST</td><td><code class="inline">/api/v1/tts</code></td><td>Text → speech (returns base64 MP3)</td></tr>
     <tr><td>GET</td><td><code class="inline">/api/v1/voices</code></td><td>All 37 voices + 11 languages (no auth)</td></tr>
-    <tr><td>POST</td><td><code class="inline">/api/keys/issue</code></td><td>Issue a key (needs payment proof — console does this)</td></tr>
+    <tr><td>POST</td><td><code class="inline">/api/keys/issue</code></td><td>Issue a key (signed-in paid account required)</td></tr>
     <tr><td>POST</td><td><code class="inline">/api/keys/info</code></td><td>Check key balance &amp; expiry</td></tr>
-    <tr><td>POST</td><td><code class="inline">/api/keys/revoke</code></td><td>Permanently delete a key</td></tr>
+    <tr><td>POST</td><td><code class="inline">/api/keys/revoke</code></td><td>Revoke a key (signed-in owner required)</td></tr>
   </table>
 </div></section>
 
@@ -130,8 +130,8 @@
 <section><div class="wrap">
   <h2><span class="num">05</span>Credits &amp; limits</h2>
   <div class="grid3">
-    <div class="card"><h3 style="font-size:15px;margin-bottom:6px">💎 Same credit economy</h3><p style="font-size:14px;color:var(--muted)">500 credits per 100-word block (min 500/request). Pro = 50,000/month, Business = 200,000/month — credits refill automatically every 30 days.</p></div>
-    <div class="card"><h3 style="font-size:15px;margin-bottom:6px">📏 Per request</h3><p style="font-size:14px;color:var(--muted)">Max 3,000 characters. Keys stay valid while your plan is active (monthly = 30 days, yearly = 365 days).</p></div>
+    <div class="card"><h3 style="font-size:15px;margin-bottom:6px">💎 Same credit economy</h3><p style="font-size:14px;color:var(--muted)">500 credits per 100-word block (min 500/request). Pro = 50,000/month, Business = 200,000/month — API credits refill every 30 days while the plan is active. Replacing a key does not reset the account quota.</p></div>
+    <div class="card"><h3 style="font-size:15px;margin-bottom:6px">📏 Per request</h3><p style="font-size:14px;color:var(--muted)">Max 3,000 characters. Keys expire at the subscription expiry recorded when issued. Renew your plan and issue a new key when needed.</p></div>
     <div class="card"><h3 style="font-size:15px;margin-bottom:6px">🛟 Failed = free</h3><p style="font-size:14px;color:var(--muted)">If synthesis fails, credits are auto-refunded. You only pay for audio you actually receive.</p></div>
   </div>
 </div></section>
@@ -140,11 +140,11 @@
   <h2><span class="num">06</span>Errors</h2>
   <table>
     <tr><th>Status</th><th>code</th><th>Meaning</th></tr>
-    <tr><td>401</td><td><code class="inline">unauthorized / invalid_key / key_expired</code></td><td>Missing, wrong or expired key</td></tr>
+    <tr><td>401</td><td><code class="inline">unauthorized</code></td><td>Missing, wrong or expired key</td></tr>
     <tr><td>400</td><td><code class="inline">empty_text</code></td><td><code class="inline">text</code> field missing</td></tr>
-    <tr><td>413</td><td><code class="inline">text_too_long</code></td><td>Over 3,000 characters — split the text</td></tr>
-    <tr><td>402</td><td><code class="inline">insufficient_credits</code></td><td>Monthly quota over — upgrade plan</td></tr>
-    <tr><td>503</td><td><code class="inline">synthesis_failed / storage_unavailable</code></td><td>Temporary — retry, credits refunded</td></tr>
+    <tr><td>400</td><td><code class="inline">request_failed</code></td><td>Over 3,000 characters — split the text</td></tr>
+    <tr><td>402</td><td><code class="inline">request_failed</code></td><td>Monthly quota over — upgrade plan</td></tr>
+    <tr><td>503</td><td><code class="inline">request_failed</code></td><td>Temporary — retry, credits refunded</td></tr>
   </table>
 </div></section>
 
@@ -204,7 +204,7 @@ with open("voice.mp3", "wb") as f:
 
 <div class="wrap" style="padding:56px 0;text-align:center">
   <h2 style="font-size:28px">Ready to build with Indian voices?</h2>
-  <p class="sub" style="max-width:460px;margin:10px auto 24px">API access is included with Pro (₹799/mo) and Business (₹2,499/mo) — same credits work on the website and the API.</p>
+  <p class="sub" style="max-width:460px;margin:10px auto 24px">API access is included with Pro (₹799/mo) and Business (₹2,499/mo) — the API has a separate account quota shared by all your new keys.</p>
   <div class="cta-row">
     <a class="btn btn-primary" href="/api-keys">Get your API key →</a>
     <a class="btn btn-ghost" href="https://www.dethe.in/#pricing">See pricing</a>

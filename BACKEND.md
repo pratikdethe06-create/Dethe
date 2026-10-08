@@ -1,86 +1,43 @@
-# 🧠 DetheAI Backend — Poora Guide (Simple Hinglish)
+# DetheAI backend
 
-> **Backend kya hota hai?** Restaurant ki analogy samjho:
-> - **Frontend** = dining area 😋 (jo customers dekhte hain — design, buttons, colors) → `public/` folder
-> - **Backend** = kitchen 👨‍🍳 (jahan asli kaam hota hai — orders process, khana banta hai, paise count hote hain) → `api/` folder
->
-> Backend **server par** chalta hai — user ka browser use dekh nahi sakta. Isliye wo **secure** hota hai: API keys, payment verification, credit counting — sab backend me, taaki koi cheat na kar sake.
+## Accounts and sessions
 
----
+Google is the supported sign-in method. OAuth verifies state and the Google email before issuing a seven-day signed HttpOnly, SameSite=Lax cookie (Secure on HTTPS). Use one canonical `APP_ORIGIN`; Google callback must match it. Logout clears the browser cookie. Rotating `SESSION_SECRET` invalidates existing sessions globally.
 
-## 📁 Aapka backend (14 files, ~1,355 lines) — sab LIVE hai
+The browser caches display information only. Account identity, plan, credits and API permissions are read from server records. Accounts are keyed by a hash of the normalized verified email in the private GitHub data repository. Contents API SHA comparisons retry concurrent mutations; operation markers prevent duplicate debits after a lost response. This storage has GitHub rate/size limits and should be replaced with a transactional database if usage grows.
 
-| File | Kaam (simple me) |
-|---|---|
-| `api/voice/generate.js` | 🎙️ **Main TTS engine** — text lekar Sarvam AI ki API se ultra-realistic awaaz banata hai. Sarvam fail ho to Microsoft Edge neural, wo bhi fail ho to Google Translate — 3-engine chain, kabhi band nahi hota. Yahi website + Developer API dono use karte hain. |
-| `api/v1/tts.js` | ⚡ **Public Developer API** (`POST /api/v1/tts`) — developers apne apps se awaaz banate hain API key se. Credits server par hi count hote hain (cheat impossible). |
-| `api/v1/voices.js` | 📋 37 voices + 11 languages ka public list (docs ke liye) |
-| `api/keys/[action].js` | 🔑 API keys ka manager — issue (nayi key), info (balance), revoke (delete) |
-| `shared/keys/issue.js` | Key banata hai — **sirf real payment proof par** (Razorpay signature verify karke) |
-| `shared/keys/info.js` | Key ka balance/expiry batata hai |
-| `shared/keys/revoke.js` | Key permanently delete karta hai |
-| `shared/kv.js` | 🗄️ **Database** — private GitHub repo (`dethe-api-db`) me API keys + credits store karta hai. Bilkul free, koi paid database nahi. |
-| `api/billing/checkout.js` | 💳 Razorpay order banata hai (₹799 Pro / ₹2,499 Business) |
-| `api/billing/verify.js` | 🔒 Payment verify karta hai (HMAC signature) — **bina payment plan kabhi nahi khulta** |
-| `api/auth/google/url.js` + `callback.js` | 🔐 Google login (OAuth) — user ka email lena (fake guests band) |
-| `api/ai/script.js` | ✍️ AI Script Writer (Gemini) — topic se voiceover script likhwata hai |
-| `api/transcribe.js` | 🎬 Video to Text — video/audio ko text me badalta hai |
-| `server.js` | 🧪 Local testing server (laptop par chalane ke liye; Vercel par zaroorat nahi) |
+## Credits and limits
 
----
+| Plan | Studio credits / 30 days | Separate API credits / 30 days | Studio characters |
+|---|---:|---:|---:|
+| Free | 10,000 | None | 1,000 |
+| Pro | 50,000 | 50,000 | 4,000 |
+| Business | 200,000 | 200,000 | 4,000 |
 
-## 💰 Credits economy (backend enforce karta hai)
+Speech costs 500 credits per started 100-word block. Debit happens before synthesis; a provider failure triggers an idempotent refund for that reservation. Refunds require storage availability. Monthly/yearly purchases expire after 30/365 days; credit refill never extends a subscription. Expired subscriptions return to Free.
 
-```
-500 credits = har 100-word block (minimum 500/request)
-─────────────────────────────────────────────────
-Free       → 10,000/month  (≈ 10 videos, 6 voices, 1,000 chars limit)
-Pro        → 50,000/month  (≈ 50 videos, sab 37 voices, unlimited chars)
-Business   → 200,000/month (≈ 200 videos, API access)
-```
+Preview endpoints accept only fixed server-owned samples. They cannot generate caller-supplied text. AI writing is limited to 20 Free / 200 paid requests per UTC day; transcription to 60 / 600 chunks. Failed attempts count toward those daily limits. Uploads are limited to 85 MB and ten minutes in the browser; longer media is rejected. Subtitle timings are estimates, not word alignment.
 
-- **Website credits** browser me track hote hain (login ke baad hi milte hain)
-- **API credits** server par track hote hain (GitHub DB me) — har 30 din auto-refill
-- Preview sunna **sabke liye free** (credits nahi kat te)
+## Payments and migration
 
-## 🛡️ Security features (backend me hi)
+Checkout stores account, plan, cycle, amount and currency. Verification checks the Razorpay HMAC plus the actual captured payment, matching amount/order/currency and no refund. A payment grants credits once, including concurrent or repeated verification. Prices in paise are defined in `shared/billing.js`.
 
-1. **Payment proof verify** — Razorpay ka HMAC signature server par check hota hai; fake plan kholna impossible
-2. **API keys encrypted nahi, private repo me** — sirf owner dekh sakta hai
-3. **Max 3 API keys per payment** — abuse prevention
-4. **Plan checks server par** — PRO voices Free users ke liye backend se hi block (402 error)
-5. **Failed generation = credits refund** (API me auto)
+Existing customers sign in with the Google email matching their payment email. The browser attempts restoration using locally saved old billing proof. The server retrieves the original provider order and payment, checks product/price/signature and payer email, and retains the original purchase expiry. Clearing old local data can remove this automatic restoration proof; support must verify the purchase with the payment provider. Unverified old browser-only plans and balances cannot grant access.
 
-## 🔑 Environment Variables (Vercel → Settings → Environment Variables)
+Up to three active API keys per paid account. All newly issued keys share the account API quota; revoking/replacing keys does not refill it. Keys expire at the subscription expiry recorded when issued. Existing pre-migration keys retain their finite original quota and expiry; device-saved keys can be revoked by their verified owner. API requests allow at most 3,000 characters.
 
-| Key | Kis liye |
-|---|---|
-| `SARVAM_API_KEY` | 37 realistic voices (api.sarvam.ai) |
-| `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET` | Payments |
-| `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` | Google login |
-| `GIMINI_APU_KEY` | AI Script Writer |
-| `GITHUB_DB_TOKEN` | API keys database (⚠️ **delete mat karna — API isi se chalti hai**) |
+Refunds after an already granted purchase are not automatically reconciled: there is no payment webhook handler. Operators must reconcile refunded entitlements with provider records before revoking account access.
 
-## 🚀 Deploy kaise hota hai
+## Providers
 
-- **Vercel serverless** — har file ek chhota function hai (max 60 sec)
-- `vercel.json` me routing: `/api/*` → backend, `/api` → docs page, baaki → website
-- Deploy: REST API se (project git-connected nahi hai)
-- **Hobby plan limit: 12 functions** — abhi 10 use me hain ✅
+`shared/synthesis.js`: Sarvam → Microsoft Edge → Google Translate fallback, subject to language support and availability. Fallback audio may differ from the selected premium voice. A synthesis deadline bounds the provider chain; storage retries still depend on external response time.
 
-## 🧪 Backend test karna ho to
+AI writing tries configured Sarvam, Gemini and OpenAI providers. Provider failures return a real error. Transcription requires Sarvam STT and audio chunks; there is no fabricated/demo result or link transcription.
 
-```bash
-# sab endpoints ka live check:
-curl -s https://www.dethe.in/api/v1/voices | head -c 200
+## Deployment and configuration
 
-# TTS test (key chahiye):
-curl -X POST https://www.dethe.in/api/v1/tts \
-  -H "Authorization: Bearer dth_live_AAPKI_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"नमस्ते","voice":"priya","languageCode":"hi-IN"}'
-```
+`.env.example` lists required variables. Keep the private database repo and original Razorpay secret when migrating existing purchases/keys. The data token should have Contents read/write access only to that repository. Account records include names, email, balances, payment references and API keys; restrict access and apply your retention/deletion policy to repository history and backups too.
 
----
+Vercel runs 11 API function entrypoints with a configured 60-second maximum. The build generates `dist/`; shared helpers remain outside `api/`. Deploy from the repository root. Project/environment access is required; neither a successful local build nor a Git push proves production publication.
 
-*Last updated: v11 (Nov 2025) — zoom fix + mobile proportions + separate pages + Developer API + real Razorpay checkout*
+`npm run build && npm test` covers SEO rendering, auth/credits/payment/key regressions using synthetic provider transport, and transcription preprocessing. These checks do not prove live Google, Razorpay or Sarvam integration. See the release notes for checks actually performed.

@@ -1,73 +1,44 @@
-/**
- * DetheAI — GitHub-backed KV store (private repo as a tiny database)
- * Powers the Developer API: API keys, server-side credit quotas, payment records.
- *
- * Env : GITHUB_DB_TOKEN  (classic PAT with repo access)
- * Repo: GITHUB_DB_REPO (default pratikdethe06-create/dethe-api-db, private)
- *
- * Layout (one JSON file per record):
- *   k_key_<apiKey>.json     → { email, plan, cycle, creditsLeft, creditsTotal, ... }
- *   k_user_<sha1(email)>.json → { email, keys: [...] }
- *   k_pay_<paymentId>.json  → { email, count }  (max 3 keys per payment)
- */
-
-const REPO = process.env.GITHUB_DB_REPO || 'pratikdethe06-create/dethe-api-db';
-const TOKEN = () => process.env.GITHUB_DB_TOKEN || '';
-const BASE = () => `https://api.github.com/repos/${REPO}/contents`;
-const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
-
+// Optimistic concurrency: rerun the mutation against the latest record on conflicts.
+const crypto = require('node:crypto');
+const { fail } = require('./http');
+function url(key) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(key)) throw fail(400, 'Invalid record identifier.');
+  const base = (process.env.GITHUB_API_URL || 'https://api.github.com').replace(/\/$/, '');
+  return `${base}/repos/${process.env.GITHUB_DB_REPO || 'pratikdethe06-create/dethe-api-db'}/contents/k_${key}.json`;
+}
 function headers() {
-  return {
-    Authorization: `token ${TOKEN()}`,
-    Accept: 'application/vnd.github+json',
-    'User-Agent': 'dethe-ai-api',
-  };
+  if (!process.env.GITHUB_DB_TOKEN) throw fail(503, 'Account storage is not configured.');
+  return { Authorization: `Bearer ${process.env.GITHUB_DB_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'dethe-ai', 'Content-Type': 'application/json' };
 }
-const filePath = (key) => `${BASE()}/k_${key}.json`;
-
-/** get(key) → parsed JSON value, or null when the record does not exist. */
-async function get(key) {
-  const r = await fetch(filePath(key), { headers: headers(), signal: AbortSignal.timeout(12000) });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error(`kv get ${key}: HTTP ${r.status}`);
-  const d = await r.json();
-  return JSON.parse(Buffer.from(d.content, 'base64').toString('utf-8'));
+async function read(key) {
+  const r = await fetch(url(key), { headers: headers(), signal: AbortSignal.timeout(12000) });
+  if (r.status === 404) return { value: null, sha: null };
+  if (!r.ok) throw fail(503, 'Account storage is temporarily unavailable.');
+  const data = await r.json();
+  return { value: JSON.parse(Buffer.from(data.content, 'base64').toString('utf8')), sha: data.sha };
 }
-
-/** put(key, value) → creates or updates the record (retries on commit conflicts). */
-async function put(key, value) {
-  const content = Buffer.from(JSON.stringify(value), 'utf-8').toString('base64');
-  for (let i = 0; i < 3; i++) {
-    let sha;
-    const g = await fetch(filePath(key), { headers: headers(), signal: AbortSignal.timeout(12000) });
-    if (g.ok) sha = (await g.json()).sha;
-    else if (g.status !== 404) throw new Error(`kv put-get ${key}: HTTP ${g.status}`);
-    const p = await fetch(filePath(key), {
-      method: 'PUT',
-      headers: { ...headers(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: `kv: ${key}`, content, ...(sha ? { sha } : {}) }),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (p.ok || p.status === 201) return true;
-    if (p.status === 409 || p.status === 422) { await sleep(120 * (i + 1)); continue; } // concurrent write → retry
-    throw new Error(`kv put ${key}: HTTP ${p.status}`);
+async function get(key) { return (await read(key)).value; }
+async function update(key, mutate) {
+  const operation = crypto.randomUUID();
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { value, sha } = await read(key);
+    if (value?._writes?.includes(operation)) return value;
+    const next = mutate(value); // Must be synchronous and safe to retry.
+    if (next === undefined) return value;
+    next._writes = [...(value?._writes || []).slice(-63), operation];
+    let r;
+    try { r = await fetch(url(key), {
+      method: 'PUT', headers: headers(), signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ message: 'Update application record', content: Buffer.from(JSON.stringify(next)).toString('base64'), ...(sha ? { sha } : {}) })
+    }); } catch {
+      // The write might have committed before its response was lost. Re-read
+      // the operation marker before applying a non-idempotent mutation again.
+      continue;
+    }
+    if (r.ok) return next;
+    if (r.status !== 409 && r.status !== 422) throw fail(503, 'Could not save account changes.');
+    await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
   }
-  throw new Error(`kv put ${key}: conflict retries exhausted`);
+  throw fail(503, 'Account is busy. Please try again.');
 }
-
-/** del(key) → removes the record (idempotent). */
-async function del(key) {
-  const g = await fetch(filePath(key), { headers: headers(), signal: AbortSignal.timeout(12000) });
-  if (g.status === 404) return true;
-  if (!g.ok) throw new Error(`kv del-get ${key}: HTTP ${g.status}`);
-  const { sha } = await g.json();
-  const d = await fetch(filePath(key), {
-    method: 'DELETE',
-    headers: { ...headers(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: `kv del: ${key}`, sha }),
-    signal: AbortSignal.timeout(15000),
-  });
-  return d.ok || d.status === 404;
-}
-
-module.exports = { get, put, del };
+module.exports = { get, update };

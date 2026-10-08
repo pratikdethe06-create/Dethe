@@ -7,6 +7,7 @@
  *   POST /api/keys/revoke  → permanently delete a key
  */
 const handlers = {
+  list: require('../../shared/keys/list'),
   issue: require('../../shared/keys/issue'),
   info: require('../../shared/keys/info'),
   revoke: require('../../shared/keys/revoke'),
@@ -18,7 +19,7 @@ module.exports = async (req, res) => {
     const u = new URL(req.url || '/', 'https://www.dethe.in');
     action = u.pathname.split('/').filter(Boolean).pop() || '';
   } catch {}
-  const h = handlers[action];
+  const h = Object.hasOwn(handlers, action) ? handlers[action] : null;
   if (!h) {
     res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
     return res.end(JSON.stringify({ ok: false, message: 'Unknown action. Use /api/keys/issue | /api/keys/info | /api/keys/revoke' }));

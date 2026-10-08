@@ -7,6 +7,7 @@
  */
 
 const kv = require('../kv');
+const accounts = require('../accounts');
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -32,16 +33,21 @@ module.exports = async (req, res) => {
   let body = {};
   try { body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {}); } catch {}
   const apiKey = String(body.apiKey || '').trim();
-  if (!apiKey.startsWith('dth_live_')) return sendJSON(res, 400, { ok: false, message: 'Valid apiKey required.' });
+  if (!/^dth_live_[a-f0-9]{36,48}$/.test(apiKey)) return sendJSON(res, 400, { ok: false, message: 'Valid apiKey required.' });
 
   try {
     const rec = await kv.get(`key_${apiKey}`);
-    if (!rec) return sendJSON(res, 200, { ok: true, valid: false, message: 'Key not found (or revoked).' });
+    if (!rec || rec.revoked) return sendJSON(res, 200, { ok: true, valid: false, message: 'Key not found (or revoked).' });
+    if (rec.owner) {
+      const account = accounts.refresh(await kv.get(accounts.key(rec.owner)));
+      const valid = account.plan !== 'Free' && rec.expiresAt > Date.now() && account.apiKeys?.some(k => k.key === apiKey);
+      return sendJSON(res, 200, { ok: true, valid: !!valid, plan: account.plan, creditsLeft: account.apiCredits || 0, creditsTotal: accounts.CREDITS[account.plan], requests: account.apiRequests || 0, expiresAt: new Date(rec.expiresAt).toISOString(), quotaScope: 'account' });
+    }
     const now = Date.now();
     const refillDue = now - (rec.lastRefillAt || rec.createdAt) >= 30 * 86400000;
     return sendJSON(res, 200, {
       ok: true,
-      valid: !rec.expiresAt || rec.expiresAt > now,
+      valid: !!rec.expiresAt && rec.expiresAt > now,
       plan: rec.plan,
       cycle: rec.cycle,
       email: maskEmail(rec.email),
